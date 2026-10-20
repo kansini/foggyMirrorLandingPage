@@ -23,6 +23,7 @@ let focusTween: gsap.core.Tween | undefined
 
 function focusShot(index: number, event: FocusEvent) {
   if (!(event.target instanceof HTMLElement) || !event.target.matches(':focus-visible') || !horizontal) return
+  if (viewport.value) viewport.value.scrollLeft = 0
   focusTween?.kill()
   focusTween = gsap.to(window, {
     scrollTo: { y: horizontal.start + (horizontal.end - horizontal.start) * index / 4, autoKill: true },

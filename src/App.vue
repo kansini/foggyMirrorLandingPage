@@ -26,6 +26,7 @@ const navTargets = ['#play', '#story', '#weather']
 let animationContext: gsap.Context | undefined
 let motion: gsap.MatchMedia | undefined
 let events: AbortController | undefined
+let refreshFrame = 0
 
 function closeMenu() { menuOpen.value = false }
 function openPrivacy() { closeMenu(); privacyDialog.value?.showModal() }
@@ -92,7 +93,7 @@ onMounted(() => {
       const scene = gsap.timeline({
         scrollTrigger: {
           trigger: heroStage.value, pin: heroStage.value, start: 'top top',
-          end: '+=105%', scrub: 1, anticipatePin: 1, invalidateOnRefresh: true,
+          end: '+=105%', scrub: 1, anticipatePin: 1, invalidateOnRefresh: true, refreshPriority: 10,
           onUpdate: self => {
             const next = self.progress > 0.45
             if (next && !inHandoff.value) mirror.value?.finishDrawing()
@@ -101,7 +102,7 @@ onMounted(() => {
         },
       })
       scene.to('.mirror-intro', { yPercent: -10, autoAlpha: 0, duration: 0.28 }, 0)
-        .to('.fullscreen-mirror', { clipPath: aperture, duration: 0.72, ease: 'power2.inOut' }, 0.04)
+        .fromTo('.fullscreen-mirror', { clipPath: 'inset(0px 0px 0px 0px round 0px)' }, { clipPath: aperture, duration: 0.72, ease: 'power2.inOut' }, 0.04)
         .fromTo('.handoff-word', { xPercent: -8, autoAlpha: 0 }, { xPercent: 0, autoAlpha: 0.08, duration: 0.7 }, 0.2)
         .fromTo('.handoff-phone', { autoAlpha: 0, scale: 1.045 }, { autoAlpha: 1, scale: 1, duration: 0.28 }, 0.51)
         .to('.fullscreen-mirror', { autoAlpha: 0, duration: 0.2 }, 0.65)
@@ -109,9 +110,14 @@ onMounted(() => {
       return () => { inHandoff.value = false }
     })
   }, root.value)
+  refreshFrame = requestAnimationFrame(() => {
+    ScrollTrigger.sort()
+    ScrollTrigger.refresh()
+  })
 })
 
 onBeforeUnmount(() => {
+  cancelAnimationFrame(refreshFrame)
   motion?.revert()
   animationContext?.revert()
   events?.abort()
@@ -314,8 +320,13 @@ onBeforeUnmount(() => {
     <dialog ref="interfaceDialog" class="content-dialog interface-dialog" aria-labelledby="interface-dialog-title" @click="dismissBackdrop($event, interfaceDialog)">
       <div class="dialog-content">
         <button class="dialog-close icon-button" :aria-label="c.close" @click="interfaceDialog?.close()"><AppIcon name="close" /></button>
-        <p class="micro-label">{{ c.preview.label }}</p><h2 id="interface-dialog-title">{{ c.preview.title }}</h2>
-        <img src="/images/app-interface.jpg" :alt="c.preview.alt" width="508" height="1100" loading="lazy" />
+        <p class="micro-label">{{ c.preview.label }}</p><h2 id="interface-dialog-title">{{ c.showcase.items[previewIndex]?.title }}</h2>
+        <img :src="screenshotUrl(locale, previewIndex)" :alt="c.showcase.items[previewIndex]?.alt" width="720" height="1470" />
+        <div class="screenshot-navigation">
+          <button :aria-label="c.showcase.previous" @click="previewIndex = (previewIndex + 4) % 5"><AppIcon name="right" :size="21" /></button>
+          <span>0{{ previewIndex + 1 }} / 05</span>
+          <button :aria-label="c.showcase.next" @click="previewIndex = (previewIndex + 1) % 5"><AppIcon name="right" :size="21" /></button>
+        </div>
         <p class="interface-caption">{{ c.preview.caption }}</p>
       </div>
     </dialog>

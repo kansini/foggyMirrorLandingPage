@@ -72,7 +72,7 @@ function buildTexture() {
     ctx.restore()
   }
   const light: Record<string, [string, string]> = {
-    morning: ['rgba(171, 195, 202, .84)', 'rgba(112, 148, 164, .87)'],
+    morning: ['rgba(132, 163, 180, .88)', 'rgba(92, 131, 155, .91)'],
     rain: ['rgba(130, 160, 177, .90)', 'rgba(76, 113, 140, .94)'],
     vintage: ['rgba(194, 182, 153, .88)', 'rgba(137, 135, 118, .93)'],
     moon: ['rgba(151, 169, 199, .90)', 'rgba(91, 112, 153, .94)'],
@@ -240,8 +240,8 @@ onMounted(() => {
   })
   observer.observe(surface.value!)
   if (cursor.value) {
-    moveX = gsap.quickTo(cursor.value, 'x', { duration: 0.22, ease: 'power3.out' })
-    moveY = gsap.quickTo(cursor.value, 'y', { duration: 0.22, ease: 'power3.out' })
+    moveX = gsap.quickTo(cursor.value, 'x', { duration: reducedMotion.matches ? 0 : 0.22, ease: 'power3.out' })
+    moveY = gsap.quickTo(cursor.value, 'y', { duration: reducedMotion.matches ? 0 : 0.22, ease: 'power3.out' })
   }
   introduction = gsap.delayedCall(reducedMotion.matches ? 0 : 1.2, drawHeart)
 })
