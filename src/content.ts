@@ -48,6 +48,7 @@ interface PageContent {
   faq: { label: string; title: string; items: { question: string; answer: string }[] }
   ending: { label: string; title: string[]; description: string; platform: string; note: string }
   footer: string
+  moreApps: { title: string; newTab: string }
   preview: { label: string; title: string; alt: string; caption: string }
   immersion: { label: string; hint: string; scroll: string; handoff: string[]; handoffNote: string }
   showcase: { label: string; title: string[]; description: string; swipe: string; previous: string; next: string; items: { title: string; description: string; alt: string }[] }
@@ -100,6 +101,7 @@ export const content: Record<Locale, PageContent> = {
     ] },
     ending: { label: 'YOUR TURN TO MAKE A LITTLE MESS', title: ['下一笔，', '轮到你。'], description: '世界已经够清晰了。\n来，给生活一点朦胧的余地。', platform: '适用于 iPhone · 设备要求以 App Store 为准', note: '随手一画，也算浪漫。' },
     footer: '留一点雾，给生活留一点余地。',
+    moreApps: { title: '更多 App', newTab: '在新标签页打开' },
     preview: { label: 'A PEEK INSIDE', title: '拿在手里的小浪漫。', alt: '雾镜真实界面：起雾的实时镜面、绘画工具、照片背景与雾迹拍摄', caption: 'App 实际界面 · 效果随镜头与风格变化' },
   },
   en: {
@@ -148,6 +150,7 @@ export const content: Record<Locale, PageContent> = {
     ] },
     ending: { label: 'YOUR TURN TO MAKE A LITTLE MESS', title: ['Your turn.', 'Make a little mist.'], description: 'The world is sharp enough.\nLeave a little room for wonder.', platform: 'For iPhone · See App Store for device requirements', note: 'A little doodle counts as romance.' },
     footer: 'A little mist. A little room to just be.',
+    moreApps: { title: 'More apps', newTab: 'Opens in a new tab' },
     preview: { label: 'A PEEK INSIDE', title: 'A little wonder, in your hand.', alt: 'The real Foggy Mirror app: live misty mirror, drawing tools, photo backgrounds and capture controls', caption: 'Actual app interface · Appearance varies with camera and style' },
   },
 }

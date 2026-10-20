@@ -229,3 +229,29 @@ html { scroll-padding-top: 118px; }
   .mist-title-line { will-change: auto; }
   .glass-cursor { display: none; }
 }
+
+.footer-apps {
+  display: flex; align-items: center; justify-content: space-between; gap: 32px;
+  padding-block: 22px; border-bottom: 1px solid var(--line);
+  .footer-apps-label { font-size: 10px; letter-spacing: .8px; color: var(--muted); flex-shrink: 0; }
+  ul { display: flex; flex-wrap: wrap; gap: 12px 38px; list-style: none; padding: 0; margin: 0; }
+  a { display: flex; align-items: center; gap: 14px; min-height: 44px; font-size: 12px; color: var(--ink); transition: color .2s;
+    svg { color: var(--muted); transition: transform .2s; }
+    &:hover, &:focus-visible { color: var(--accent); svg { transform: translate(2px, -2px); } }
+  }
+}
+@media (max-width: 850px) {
+  .footer-apps { gap: 20px; ul { gap: 8px 24px; } a { font-size: 11px; gap: 10px; } }
+}
+@media (max-width: 600px) {
+  .footer-apps {
+    display: block; padding-block: 26px 14px;
+    .footer-apps-label { display: block; font-size: 9px; margin-bottom: 13px; }
+    ul { display: grid; grid-template-columns: 1fr; gap: 0; }
+    a { justify-content: space-between; min-height: 48px; font-size: 12px; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .footer-apps a, .footer-apps a svg { transition: none; }
+  .footer-apps a:hover svg, .footer-apps a:focus-visible svg { transform: none; }
+}

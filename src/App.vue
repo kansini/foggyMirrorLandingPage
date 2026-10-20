@@ -31,6 +31,11 @@ const privacyDialog = ref<HTMLDialogElement>()
 const interfaceDialog = ref<HTMLDialogElement>()
 const selectedMood = computed(() => c.value.moods.find(mood => mood.id === activeMood.value) || c.value.moods[0]!)
 const navTargets = ['#play', '#story', '#weather']
+const otherApps = [
+  { name: 'Art Detective', url: 'https://art-detective.netlify.app' },
+  { name: 'Silver Salt', url: 'https://silver-salt.netlify.app' },
+  { name: 'Oddletics', url: 'https://oddletics.cn' },
+]
 let animationContext: gsap.Context | undefined
 let motion: gsap.MatchMedia | undefined
 let events: AbortController | undefined
@@ -292,10 +297,22 @@ onBeforeUnmount(() => {
       </section>
     </main>
 
-    <footer class="site-footer page-width">
-      <a href="#" class="footer-brand">{{ c.brand }}<span>FOGGY MIRROR</span></a>
-      <p>{{ c.footer }}</p>
-      <div><button @click="openPrivacy">{{ c.privacy.more }}</button><span>© {{ new Date().getFullYear() }} FOGGY MIRROR</span></div>
+    <footer class="footer-wrap page-width">
+      <nav class="footer-apps" :aria-label="c.moreApps.title">
+        <span class="footer-apps-label">{{ c.moreApps.title }}</span>
+        <ul>
+          <li v-for="app in otherApps" :key="app.url">
+            <a :href="app.url" target="_blank" rel="noopener noreferrer" :aria-label="app.name + ' · ' + c.moreApps.newTab">
+              <span>{{ app.name }}</span><AppIcon name="arrow" :size="15" />
+            </a>
+          </li>
+        </ul>
+      </nav>
+      <div class="site-footer">
+        <a href="#" class="footer-brand">{{ c.brand }}<span>FOGGY MIRROR</span></a>
+        <p>{{ c.footer }}</p>
+        <div><button @click="openPrivacy">{{ c.privacy.more }}</button><span>© {{ new Date().getFullYear() }} FOGGY MIRROR</span></div>
+      </div>
     </footer>
 
     <dialog ref="privacyDialog" class="content-dialog" aria-labelledby="privacy-dialog-title" @click="dismissBackdrop($event, privacyDialog)">
