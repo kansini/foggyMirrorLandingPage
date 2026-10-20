@@ -3,199 +3,154 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import gsap from 'gsap'
 import AppIcon from './AppIcon.vue'
 import type { MirrorLabels } from '../content'
+import { WebGLFogRenderer, type MirrorPoint } from '../rendering/WebGLFogRenderer'
 
-const props = withDefaults(defineProps<{ mood?: string; dark?: boolean; labels: MirrorLabels }>(), {
-  mood: 'morning', dark: false,
-})
+const props = withDefaults(defineProps<{
+  mood?: string; dark?: boolean; inactive?: boolean; labels: MirrorLabels
+}>(), { mood: 'morning', dark: false, inactive: false })
 const canvas = ref<HTMLCanvasElement>()
 const surface = ref<HTMLDivElement>()
 const cursor = ref<HTMLSpanElement>()
-const wave = ref<HTMLSpanElement>()
 const drawingMode = ref(false)
 const hasCanvas = ref(true)
-type Point = { x: number; y: number }
-let strokes: Point[][] = []
-let activeStroke: Point[] | undefined
-let observer: ResizeObserver | undefined
+const ready = ref(false)
+let renderer: WebGLFogRenderer | undefined
+let resizeObserver: ResizeObserver | undefined
+let visibilityObserver: IntersectionObserver | undefined
 let photo: HTMLImageElement | undefined
-let texture: HTMLCanvasElement | undefined
 let pointerId: number | undefined
+let lastPoint: MirrorPoint | undefined
+let lowPoint: MirrorPoint | undefined
+let lastRadius = 13
+let lastTimestamp = 0
 let width = 1
 let height = 1
-let ratio = 1
+let visible = true
+let motionQuery: MediaQueryList | undefined
+let events: AbortController | undefined
 let heartTween: gsap.core.Tween | undefined
 let breathTween: gsap.core.Timeline | undefined
+let clearTween: gsap.core.Tween | undefined
 let introduction: gsap.core.Tween | undefined
+let themeBreath: gsap.core.Timeline | undefined
 let moveX: ReturnType<typeof gsap.quickTo> | undefined
 let moveY: ReturnType<typeof gsap.quickTo> | undefined
-let reducedMotion: MediaQueryList | undefined
 
-function erase(points: Point[]) {
-  const ctx = canvas.value?.getContext('2d')
-  if (!ctx || !points.length) return
-  ctx.save()
-  ctx.globalCompositeOperation = 'destination-out'
-  ctx.lineWidth = Math.min(width, height) * 0.057
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  ctx.beginPath()
-  ctx.moveTo(points[0]!.x * width, points[0]!.y * height)
-  if (points.length === 1) ctx.lineTo(points[0]!.x * width + 0.1, points[0]!.y * height + 0.1)
-  else points.slice(1).forEach(p => ctx.lineTo(p.x * width, p.y * height))
-  ctx.stroke()
-  ctx.restore()
+function invalidate() { renderer?.invalidate() }
+
+function breatheForTheme() {
+  if (!renderer || !visible || props.inactive || motionQuery?.matches) return
+  themeBreath?.kill()
+  // Optical lift only: never deposit mist into or erase the user's wipe field.
+  themeBreath = gsap.timeline()
+    .to(renderer, { themeMist: 1, duration: .22, ease: 'sine.out', onUpdate: invalidate })
+    .to(renderer, { themeMist: 0, duration: .64, ease: 'sine.inOut', onUpdate: invalidate })
 }
 
-function repaint() {
-  const ctx = canvas.value?.getContext('2d')
-  if (!ctx || !texture) return
-  ctx.clearRect(0, 0, width, height)
-  ctx.drawImage(texture, 0, 0, width, height)
-  strokes.forEach(erase)
-}
-
-function buildTexture() {
-  if (!canvas.value) return
-  texture ??= document.createElement('canvas')
-  texture.width = canvas.value.width
-  texture.height = canvas.value.height
-  const ctx = texture.getContext('2d')
-  if (!ctx) return
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
-  if (photo?.complete && photo.naturalWidth) {
-    const scale = Math.max(width / photo.naturalWidth, height / photo.naturalHeight)
-    const w = photo.naturalWidth * scale
-    const h = photo.naturalHeight * scale
-    ctx.save()
-    ctx.filter = 'blur(24px)'
-    ctx.drawImage(photo, (width - w) / 2 - 30, (height - h) * 0.4 - 30, w + 60, h + 60)
-    ctx.restore()
-  }
-  const light: Record<string, [string, string]> = {
-    morning: ['rgba(132, 163, 180, .88)', 'rgba(92, 131, 155, .91)'],
-    rain: ['rgba(130, 160, 177, .90)', 'rgba(76, 113, 140, .94)'],
-    vintage: ['rgba(194, 182, 153, .88)', 'rgba(137, 135, 118, .93)'],
-    moon: ['rgba(151, 169, 199, .90)', 'rgba(91, 112, 153, .94)'],
-  }
-  const dark: Record<string, [string, string]> = {
-    morning: ['rgba(48, 79, 90, .94)', 'rgba(24, 48, 62, .97)'],
-    rain: ['rgba(36, 66, 89, .96)', 'rgba(18, 35, 57, .98)'],
-    vintage: ['rgba(82, 77, 62, .95)', 'rgba(40, 47, 45, .98)'],
-    moon: ['rgba(53, 66, 104, .96)', 'rgba(26, 33, 61, .98)'],
-  }
-  const palette = props.dark ? dark : light
-  const colors = palette[props.mood] || palette.morning!
-  const fog = ctx.createLinearGradient(0, 0, width, height)
-  fog.addColorStop(0, colors[0])
-  fog.addColorStop(1, colors[1])
-  ctx.fillStyle = fog
-  ctx.fillRect(0, 0, width, height)
-  let seed = 17
-  const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 }
-  const drops = Math.min(3200, Math.round(width * height / 360))
-  for (let i = 0; i < drops; i++) {
-    const x = random() * width
-    const y = random() * height
-    const r = 0.4 + random() ** 3 * 3.8
-    ctx.beginPath()
-    ctx.ellipse(x, y, r, r * 1.3, -0.15, 0, Math.PI * 2)
-    ctx.fillStyle = 'rgba(236, 248, 250,' + (0.08 + random() * 0.2) + ')'
-    ctx.fill()
-    if (r > 1.4) {
-      ctx.beginPath()
-      ctx.ellipse(x, y + 0.7, r, r * 1.3, -0.15, 0, Math.PI)
-      ctx.strokeStyle = 'rgba(25, 54, 75, .18)'
-      ctx.lineWidth = 0.7
-      ctx.stroke()
-    }
-  }
-  repaint()
-}
-
-function finishPointer() {
-  if (pointerId !== undefined && canvas.value?.hasPointerCapture(pointerId)) canvas.value.releasePointerCapture(pointerId)
+function finishPointer(depositWater = true) {
+  const id = pointerId
   pointerId = undefined
-  activeStroke = undefined
-  if (cursor.value) gsap.to(cursor.value, { scale: 1, duration: 0.2 })
+  if (id !== undefined && canvas.value?.hasPointerCapture(id)) canvas.value.releasePointerCapture(id)
+  if (depositWater && lowPoint) renderer?.finishStroke(lowPoint, lastRadius)
+  lastPoint = undefined
+  lowPoint = undefined
+  if (cursor.value) gsap.to(cursor.value, { scale: 1, duration: motionQuery?.matches ? 0 : .2 })
 }
 
 function interruptAnimation() {
   introduction?.kill()
   heartTween?.kill()
   breathTween?.kill()
-  if (canvas.value) gsap.set(canvas.value, { clearProps: 'clipPath,opacity' })
+  clearTween?.kill()
 }
 
 function reset() {
+  if (!renderer) return
   interruptAnimation()
-  finishPointer()
-  strokes = []
-  repaint()
-  if (reducedMotion?.matches || !canvas.value) return
-  breathTween = gsap.timeline()
-    .fromTo(canvas.value, { clipPath: 'circle(0% at 50% 52%)' }, {
-      clipPath: 'circle(150% at 50% 52%)', duration: 1.65, ease: 'power2.out',
-      clearProps: 'clipPath',
-    }, 0)
-  if (wave.value) {
-    breathTween.fromTo(wave.value, { scale: 0.1, opacity: 0.65 }, {
-      scale: 5, opacity: 0, duration: 1.6, ease: 'power2.out',
-    }, 0)
+  finishPointer(false)
+  if (motionQuery?.matches) {
+    renderer.refog(0, 1)
+    renderer.amount = 1
+    invalidate()
+    return
   }
+  const progress = { value: 0 }
+  let previous = 0
+  // The app spreads manual mist over several seconds. This adds optical mass
+  // and fades the old wipe field only where the irregular front has arrived.
+  breathTween = gsap.timeline()
+    .to(renderer, { amount: 1, duration: 4.5, ease: 'power1.out', onUpdate: invalidate }, 0)
+    .to(progress, {
+      value: 1, duration: 4.5, ease: 'none',
+      onUpdate: () => { renderer?.refog(previous, progress.value); previous = progress.value },
+    }, 0)
 }
 
 function drawHeart() {
+  if (!renderer) return
   interruptAnimation()
-  if (strokes.length >= 80) { strokes = []; repaint() }
+  finishPointer(false)
+  if (renderer.amount < .01) {
+    renderer.clearField()
+    renderer.amount = 1
+  }
   const size = Math.min(width, height)
-  const center = { x: width > height ? 0.76 : 0.72, y: width > height ? 0.48 : 0.49 }
-  const points: Point[] = []
+  const center = { x: width > height ? .76 : .72, y: width > height ? .48 : .49 }
+  const points: MirrorPoint[] = []
   for (let i = 0; i <= 120; i++) {
     const t = i / 120 * Math.PI * 2
     points.push({
-      x: center.x + (16 * Math.sin(t) ** 3) * size / (width * 125),
+      x: center.x + 16 * Math.sin(t) ** 3 * size / (width * 125),
       y: center.y - (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * size / (height * 125),
     })
   }
-  const stroke: Point[] = [points[0]!]
-  strokes.push(stroke)
-  if (reducedMotion?.matches) { stroke.push(...points.slice(1)); repaint(); return }
+  const radius = (index: number) => 10 + 2 * Math.sin(index / 120 * Math.PI)
+  const draw = (from: number, to: number) => {
+    for (let i = Math.max(1, from + 1); i <= to; i++) renderer?.stroke(points[i - 1]!, points[i]!, radius(i - 1), radius(i))
+  }
+  if (motionQuery?.matches) { draw(0, 120); return }
   const progress = { index: 0 }
   let previous = 0
   heartTween = gsap.to(progress, {
-    index: 120, duration: 1.55, ease: 'power1.inOut',
+    index: 120, duration: 1.65, ease: 'power1.inOut',
     onUpdate: () => {
       const next = Math.floor(progress.index)
-      if (next > previous) {
-        erase(points.slice(previous, next + 1))
-        stroke.push(...points.slice(previous + 1, next + 1))
-        previous = next
-      }
+      draw(previous, next)
+      previous = next
+    },
+    onComplete: () => {
+      const bottom = points.reduce((a, b) => a.y > b.y ? a : b)
+      renderer?.finishStroke(bottom, 11)
     },
   })
 }
 
 function clear() {
+  if (!renderer) return
   interruptAnimation()
-  finishPointer()
-  gsap.to(canvas.value!, { opacity: 0, duration: reducedMotion?.matches ? 0 : 0.9, ease: 'power2.out' })
+  finishPointer(false)
+  clearTween = gsap.to(renderer, {
+    amount: 0, duration: motionQuery?.matches ? 0 : 1.2, ease: 'power2.out',
+    onUpdate: invalidate, onComplete: () => { renderer?.clearField(); invalidate() },
+  })
 }
 
-function point(event: PointerEvent): Point {
+function point(event: PointerEvent): MirrorPoint {
   const rect = canvas.value!.getBoundingClientRect()
   return { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height }
 }
 
 function start(event: PointerEvent) {
-  if ((event.pointerType === 'touch' && !drawingMode.value) || pointerId !== undefined || (event.pointerType === 'mouse' && event.button !== 0)) return
+  if (!renderer || props.inactive || (event.pointerType === 'touch' && !drawingMode.value) || pointerId !== undefined || (event.pointerType === 'mouse' && event.button !== 0)) return
   interruptAnimation()
-  if (strokes.length >= 80) { strokes = []; repaint() }
   pointerId = event.pointerId
   canvas.value?.setPointerCapture(event.pointerId)
-  activeStroke = [point(event)]
-  strokes.push(activeStroke)
-  erase(activeStroke)
-  if (cursor.value) gsap.to(cursor.value, { scale: 0.65, duration: 0.2 })
+  lastPoint = point(event)
+  lowPoint = lastPoint
+  lastTimestamp = event.timeStamp
+  lastRadius = event.pointerType === 'pen' ? 5 + event.pressure * 17 : 13
+  renderer.stroke(lastPoint, lastPoint, lastRadius, lastRadius)
+  if (cursor.value) gsap.to(cursor.value, { scale: .65, duration: motionQuery?.matches ? 0 : .2 })
 }
 
 function move(event: PointerEvent) {
@@ -204,15 +159,24 @@ function move(event: PointerEvent) {
     moveX?.(event.clientX - rect.left)
     moveY?.(event.clientY - rect.top)
   }
-  if (!activeStroke || event.pointerId !== pointerId || activeStroke.length >= 1800) return
-  const last = activeStroke[activeStroke.length - 1]!
+  if (!renderer || !lastPoint || event.pointerId !== pointerId) return
   const next = point(event)
-  activeStroke.push(next)
-  erase([last, next])
+  const dt = Math.max(1, event.timeStamp - lastTimestamp)
+  const speed = Math.hypot((next.x - lastPoint.x) * width, (next.y - lastPoint.y) * height) / dt * 1000
+  const contact = Math.sqrt(Math.max(1, event.width * event.height))
+  const targetRadius = event.pointerType === 'pen'
+    ? 5 + Math.max(0, Math.min(1, event.pressure)) * 17
+    : Math.max(5, Math.min(22, 13 + Math.min(6, contact * .2) - Math.min(5, speed * .007)))
+  const radius = lastRadius + (targetRadius - lastRadius) * (1 - Math.exp(-dt / 65))
+  renderer.stroke(lastPoint, next, lastRadius, radius)
+  lastPoint = next
+  lastRadius = radius
+  lastTimestamp = event.timeStamp
+  if (!lowPoint || next.y > lowPoint.y) lowPoint = next
 }
 
 function end(event: PointerEvent) {
-  if (event.pointerId === pointerId) finishPointer()
+  if (event.pointerId === pointerId) finishPointer(event.type !== 'pointercancel')
 }
 
 function toggleDrawing() {
@@ -220,53 +184,93 @@ function toggleDrawing() {
   drawingMode.value = !drawingMode.value
 }
 
+function updateActive() { renderer?.setActive(visible && !props.inactive && !document.hidden) }
+
+function updateMotion() {
+  renderer?.setMotion(!motionQuery?.matches)
+  if (motionQuery?.matches) {
+    themeBreath?.progress(1)
+    heartTween?.progress(1)
+    breathTween?.progress(1)
+    clearTween?.progress(1)
+  }
+}
+
+function contextLost(event: Event) {
+  event.preventDefault()
+  interruptAnimation()
+  finishPointer(false)
+  themeBreath?.kill()
+  renderer?.dispose()
+  renderer = undefined
+  ready.value = false
+  hasCanvas.value = false
+}
+
 onMounted(() => {
-  reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
-  if (!canvas.value?.getContext('2d')) { hasCanvas.value = false; return }
+  events = new AbortController()
+  motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+  try {
+    renderer = new WebGLFogRenderer(canvas.value!)
+  } catch (error) {
+    console.warn('Foggy Mirror: optical rendering unavailable.', error)
+    hasCanvas.value = false
+    return
+  }
+  renderer.setStyle(props.mood, props.dark)
+  renderer.setMotion(!motionQuery.matches)
+  motionQuery.addEventListener('change', updateMotion)
+  document.addEventListener('visibilitychange', updateActive, { signal: events.signal })
   photo = new Image()
-  photo.onload = buildTexture
-  photo.src = '/images/fog-friend.jpg'
-  observer = new ResizeObserver(() => {
-    if (!surface.value || !canvas.value) return
+  photo.onload = () => {
+    renderer?.setScene(photo!)
+    ready.value = true
+  }
+  // A sharp source is essential: the previous illustration already contained fog.
+  photo.src = '/images/cat.jpg'
+  resizeObserver = new ResizeObserver(() => {
+    if (!surface.value || !renderer) return
     width = surface.value.clientWidth
     height = surface.value.clientHeight
-    if (!width || !height) return
-    // Cap raster work at two million pixels on wide and high-density displays.
-    ratio = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(2_000_000 / (width * height)))
-    canvas.value.width = Math.round(width * ratio)
-    canvas.value.height = Math.round(height * ratio)
-    canvas.value.getContext('2d')!.setTransform(ratio, 0, 0, ratio, 0, 0)
-    buildTexture()
+    if (width && height) renderer.resize(width, height)
   })
-  observer.observe(surface.value!)
+  resizeObserver.observe(surface.value!)
+  visibilityObserver = new IntersectionObserver(entries => {
+    visible = entries[0]?.isIntersecting ?? false
+    updateActive()
+  })
+  visibilityObserver.observe(surface.value!)
   if (cursor.value) {
-    moveX = gsap.quickTo(cursor.value, 'x', { duration: reducedMotion.matches ? 0 : 0.22, ease: 'power3.out' })
-    moveY = gsap.quickTo(cursor.value, 'y', { duration: reducedMotion.matches ? 0 : 0.22, ease: 'power3.out' })
+    const duration = motionQuery.matches ? 0 : .22
+    moveX = gsap.quickTo(cursor.value, 'x', { duration, ease: 'power3.out' })
+    moveY = gsap.quickTo(cursor.value, 'y', { duration, ease: 'power3.out' })
   }
-  introduction = gsap.delayedCall(reducedMotion.matches ? 0 : 1.2, drawHeart)
+  introduction = gsap.delayedCall(motionQuery.matches ? 0 : 1.2, drawHeart)
 })
 
-watch(() => [props.mood, props.dark], buildTexture)
+watch(() => [props.mood, props.dark], () => renderer?.setStyle(props.mood, props.dark))
+watch(() => props.inactive, () => { if (props.inactive) finishPointer(false); updateActive() })
 onBeforeUnmount(() => {
-  observer?.disconnect()
-  introduction?.kill()
-  heartTween?.kill()
-  breathTween?.kill()
+  themeBreath?.kill()
+  interruptAnimation()
+  resizeObserver?.disconnect()
+  visibilityObserver?.disconnect()
+  events?.abort()
+  motionQuery?.removeEventListener('change', updateMotion)
   moveX?.tween.kill()
   moveY?.tween.kill()
-  if (canvas.value) gsap.killTweensOf(canvas.value)
   if (cursor.value) gsap.killTweensOf(cursor.value)
   if (photo) photo.onload = null
+  renderer?.dispose()
 })
-defineExpose({ reset, drawHeart, finishDrawing: () => { finishPointer(); drawingMode.value = false } })
+defineExpose({ reset, drawHeart, breatheForTheme, finishDrawing: () => { finishPointer(); drawingMode.value = false } })
 </script>
 
 <template>
   <div class="fullscreen-mirror" role="group" :aria-label="labels.name" aria-describedby="mirror-instructions">
     <div ref="surface" class="mirror-expanse" :class="{ 'is-drawing': drawingMode }" @pointermove="move">
-      <img class="mirror-scene" src="/images/fog-friend.jpg" :alt="labels.imageAlt" width="1080" height="1920" fetchpriority="high" />
-      <canvas v-if="hasCanvas" ref="canvas" class="fog-canvas" aria-hidden="true" @pointerdown="start" @pointerup="end" @pointercancel="end" @lostpointercapture="end" />
-      <span ref="wave" class="breath-wave" aria-hidden="true"></span>
+      <img class="mirror-scene" src="/images/cat.jpg" :alt="labels.imageAlt" width="667" height="1000" fetchpriority="high" />
+      <canvas v-if="hasCanvas" ref="canvas" class="fog-canvas" :class="{ 'is-ready': ready }" aria-hidden="true" @pointerdown="start" @pointerup="end" @pointercancel="end" @lostpointercapture="end" @webglcontextlost="contextLost" />
       <span ref="cursor" class="glass-cursor" aria-hidden="true">+</span>
     </div>
     <div class="mirror-toolbar">

@@ -38,7 +38,7 @@ watch(() => props.locale, async () => {
 
 onMounted(() => {
   media = gsap.matchMedia()
-  media.add('(min-width: 1000px) and (min-height: 700px) and (prefers-reduced-motion: no-preference)', () => {
+  media.add('(min-width: 1000px) and (min-height: 850px) and (prefers-reduced-motion: no-preference)', () => {
     animated.value = true
     const distance = () => Math.max(0, track.value!.scrollWidth - viewport.value!.clientWidth)
     const timeline = gsap.timeline({
@@ -120,7 +120,9 @@ onBeforeUnmount(() => { media?.revert(); focusTween?.kill() })
 }
 .has-scroll-timeline {
   padding-block: 0;
-  .showcase-pin { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; padding-block: 25px; }
+  .showcase-pin { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; padding-block: 116px 25px; }
+  .showcase-heading { padding-bottom: 24px; h2 { font-size: clamp(35px, 3vw, 46px); } }
+  .shot-device img { height: min(43svh, 490px); }
   .showcase-viewport { overflow: hidden; scroll-snap-type: none; }
   .showcase-progress { display: block; }
 }

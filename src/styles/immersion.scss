@@ -1,22 +1,58 @@
 // The first viewport is one continuous piece of glass; chrome floats above it.
 .site-header {
-  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  color: #f5faf7; border-bottom-color: #ffffff30; background: linear-gradient(180deg, #193c5133, transparent);
-  .brand { text-shadow: 0 1px 12px #17394a22; }
-  .desktop-nav sup { color: #e1eef2a6; }
-  .language-switch button { color: #e3f0f2a8; }
-  .language-switch button[aria-pressed='true'] { color: #fff; }
-  .theme-toggle { border-color: #ffffff50; &:hover { background: #ffffff18; } }
-  .header-download { border-color: #ffffff80; }
+  --header-ink: #f5faf7;
+  --header-muted: #dce8e4;
+  --header-line: #f5faf747;
+  --header-hover: #ffffff18;
+  position: fixed; top: 0; left: 0; right: 0; transform: none; z-index: 90;
+  display: block; width: 100%; height: auto; margin: 0;
+  color: var(--header-ink); border-bottom-color: transparent;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition: color .4s, border-color .4s, box-shadow .4s;
+  &::before {
+    content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background: var(--paper); background: color-mix(in srgb, var(--paper) 68%, transparent);
+    opacity: 0;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    transition: opacity .45s, -webkit-backdrop-filter .45s, backdrop-filter .45s;
+  }
+  &.is-on-paper {
+    --header-ink: var(--ink);
+    --header-muted: var(--muted);
+    --header-line: var(--line);
+    --header-hover: var(--surface);
+    border-bottom-color: var(--line);
+    box-shadow: 0 5px 18px color-mix(in srgb, var(--ink) 6%, transparent);
+    &::before {
+      opacity: 1;
+      -webkit-backdrop-filter: blur(10px) saturate(110%);
+      backdrop-filter: blur(10px) saturate(110%);
+    }
+  }
+  .brand { text-shadow: none; }
+  .desktop-nav sup { color: var(--header-muted); }
+  .language-switch button { color: var(--header-muted); }
+  .language-switch button[aria-pressed='true'] { color: var(--header-ink); }
+  .theme-toggle { border-color: var(--header-line); &:hover { background: var(--header-hover); } }
+  .header-download { border-color: var(--header-ink); }
   .mobile-nav { color: var(--ink); }
 }
+.header-inner {
+  position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+  gap: 32px; width: min(1420px, calc(100% - 88px)); height: 100px; margin-inline: auto;
+}
+html { scroll-padding-top: 118px; }
 .immersive-hero { position: relative; }
 .immersive-stage { position: relative; height: 100svh; min-height: 680px; overflow: hidden; isolation: isolate; background: var(--paper); }
 .fullscreen-mirror { position: absolute; inset: 0; z-index: 1; }
 .mirror-expanse { position: absolute; inset: 0; overflow: hidden; background: #718c9f; }
 .mirror-scene, .mirror-expanse .fog-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .mirror-scene { object-fit: cover; object-position: 50% 40%; filter: brightness(var(--photo-brightness)); }
-.mirror-expanse .fog-canvas { touch-action: pan-y; cursor: crosshair; }
+.mirror-expanse .fog-canvas { touch-action: pan-y; cursor: crosshair; opacity: 0; }
+.mirror-expanse .fog-canvas.is-ready { opacity: 1; }
 .mirror-expanse.is-drawing .fog-canvas { touch-action: none; }
 .breath-wave { position: absolute; left: calc(50% - 150px); top: calc(52% - 150px); width: 300px; height: 300px; border: 1px solid #f2ffff7a; border-radius: 50%; opacity: 0; pointer-events: none; }
 .glass-cursor { position: absolute; left: 0; top: 0; width: 51px; height: 51px; margin: -25px 0 0 -25px; border: 1px solid #ffffff7a; color: #ffffffc9; border-radius: 50%; display: grid; place-items: center; font-size: 16px; font-weight: 200; opacity: 0; pointer-events: none; transition: opacity .25s; }
@@ -33,19 +69,24 @@
   button { width: 43px; height: 43px; border: 1px solid #ffffff4d; background: #ffffff10; color: #fff; backdrop-filter: blur(10px); }
   button:hover, button[aria-pressed='true'] { background: #eff7f0; color: #315167; border-color: #eff7f0; }
 }
-.mirror-intro { position: absolute; inset: 0; z-index: 3; color: #f5fbf6; pointer-events: none; background: linear-gradient(90deg, #17354b42 0%, transparent 75%), linear-gradient(0deg, #1c3e5145, transparent 38%); }
+.mirror-intro { position: absolute; inset: 0; z-index: 3; color: #f5fbf6; pointer-events: none; background: linear-gradient(90deg, #0910144d 0%, transparent 75%), linear-gradient(0deg, #0b101545, transparent 38%); }
 .mirror-edition { position: absolute; top: 130px; left: 6%; right: 4.5%; display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 8px; letter-spacing: 1.8px; opacity: .78; }
-.mist-title { position: absolute; top: 24%; left: 8%; max-width: 85%;
-  > .micro-label { font-size: 9px; letter-spacing: 2px; opacity: .8; }
-  h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(100px, 10.5vw, 158px); letter-spacing: -6px; line-height: 1.18; margin-top: 17px; }
-  h1 > span { display: block; }
+.mirror-copy {
+  position: absolute; top: clamp(164px, 20svh, 228px); bottom: 124px; left: 8%;
+  width: min(54vw, 760px); display: flex; flex-direction: column; justify-content: center;
+  align-items: flex-start; gap: clamp(24px, 3.5svh, 38px);
+}
+.mist-title { position: relative; width: 100%; min-width: 0;
+  > .micro-label { display: block; font-size: 9px; letter-spacing: 2px; line-height: 1.7; opacity: .8; }
+  h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(76px, min(9vw, 14.5svh), 136px); letter-spacing: -3px; line-height: 1.12; margin-top: 20px; }
+  h1 > span { display: block; white-space: nowrap; width: max-content; }
   h1 > span:first-child { font-style: italic; font-weight: 300; }
-  h1 > span:last-child { margin-left: 18%; }
-  > p { font-size: 22px; letter-spacing: 2px; margin: 24px 0 0 18%; transform: rotate(-7deg); opacity: .85; }
+  h1 > span:last-child { margin-left: .28em; }
+  > p { width: fit-content; font-size: 18px; line-height: 1.5; letter-spacing: 1.5px; margin-top: 20px; transform: rotate(-4deg); opacity: .85; }
 }
 .mist-title-line { will-change: transform, opacity; }
 .mirror-side-note { position: absolute; top: 41%; right: 5%; max-width: 160px; font-size: 18px; line-height: 1.8; letter-spacing: 2px; transform: rotate(7deg); opacity: .85; }
-.mirror-invitation { position: absolute; left: 8%; bottom: 13%;
+.mirror-invitation { position: relative; width: 100%;
   > p { font-size: 12px; line-height: 1.9; letter-spacing: .7px; color: #e5eef0; }
 }
 .immersive-actions { display: flex; align-items: center; gap: 29px; margin-top: 21px;
@@ -75,9 +116,10 @@
 }
 .interface-dialog img { border-radius: 0; }
 .is-english {
-  .mist-title h1 { font-size: clamp(68px, 7.6vw, 120px); letter-spacing: -5px; line-height: 1.15; }
-  .mist-title h1 > span:last-child { margin-left: 7%; }
-  .mist-title > p { font-size: 20px; margin-left: 7%; letter-spacing: 0; }
+  .mirror-copy { width: min(60vw, 800px); }
+  .mist-title h1 { font-size: clamp(48px, min(6.3vw, 12svh), 104px); letter-spacing: -.045em; line-height: 1.12; }
+  .mist-title h1 > span:last-child { margin-left: .12em; }
+  .mist-title > p { font-size: 18px; letter-spacing: 0; }
   .mirror-side-note { font-size: 18px; letter-spacing: 0; }
   .mirror-invitation > p { font-size: 13px; letter-spacing: 0; }
   .mirror-scroll { font-size: 8px; letter-spacing: .3px; }
@@ -85,22 +127,21 @@
   .handoff-copy h2 { font-size: 43px; line-height: 1.15; letter-spacing: -2px; }
 }
 @media (max-width: 1150px) {
+  .header-inner { width: calc(100% - 64px); gap: 20px; }
   .mirror-edition { left: 4%; right: 4%; top: 123px; }
-  .mist-title { left: 6%; top: 25%; h1 { font-size: 113px; } > p { font-size: 20px; } }
-  .mirror-invitation, .mirror-scroll { left: 6%; }
+  .mirror-copy, .mirror-scroll { left: 6%; }
   .mirror-side-note { right: 4%; max-width: 140px; font-size: 16px; }
   .mirror-toolbar { right: 4%; gap: 16px; }
   .mirror-instruction > p { font-size: 8px; }
   .scroll-line { width: 50px; }
-  .is-english .mist-title h1 { font-size: 81px; }
   .is-english .handoff-copy h2 { font-size: 35px; }
 }
 @media (max-width: 850px) {
+  .header-inner { width: calc(100% - 48px); height: 84px; }
+  html { scroll-padding-top: 106px; }
   .mirror-edition { top: 111px; font-size: 7px; letter-spacing: 1px; }
   .mirror-edition > span:last-child { display: none; }
-  .mist-title { top: 25%; left: 6%; h1 { font-size: 100px; letter-spacing: -4px; } }
   .mirror-side-note { right: 6%; top: 47%; max-width: 120px; font-size: 15px; }
-  .mirror-invitation { bottom: 18%; }
   .mirror-invitation > p { font-size: 11px; }
   .mirror-toolbar { bottom: 30px; right: 4%; flex-direction: column; align-items: flex-end; gap: 14px; }
   .mirror-instruction > span { font-size: 6px; margin-bottom: 6px; }
@@ -108,21 +149,22 @@
   .mirror-toolbar .mirror-tools { gap: 6px; button { width: 39px; height: 39px; } }
   .mirror-scroll { bottom: 32px; font-size: 7px; gap: 11px; }
   .scroll-line { width: 35px; }
-  .is-english .mist-title h1 { font-size: 70px; letter-spacing: -3px; }
   .is-english .mist-title > p { font-size: 17px; }
   .is-english .mirror-scroll { max-width: 240px; line-height: 1.9; font-size: 7px; }
 }
 @media (max-width: 600px) {
+  .header-inner { width: calc(100% - 36px); height: 78px; gap: 12px; }
   .immersive-stage { height: 100svh; min-height: 710px; }
   .mirror-edition { left: 22px; right: 22px; top: 106px; font-size: 6px; letter-spacing: 1.3px; }
-  .mist-title { left: 22px; right: 22px; max-width: none; top: 24%;
+  .mirror-copy { left: 22px; right: 22px; top: 158px; bottom: 190px; width: auto; gap: 20px; }
+  .mist-title {
     > .micro-label { font-size: 7px; letter-spacing: 1.4px; }
-    h1 { font-size: clamp(76px, 21vw, 112px); letter-spacing: -4px; line-height: 1.25; margin-top: 16px; }
-    h1 > span:last-child { margin-left: 8%; }
-    > p { font-size: 17px; margin: 20px 0 0 10%; letter-spacing: 1px; }
+    h1 { font-size: clamp(56px, min(17vw, 9svh), 84px); letter-spacing: -2px; line-height: 1.12; margin-top: 16px; }
+    h1 > span:last-child { margin-left: .25em; }
+    > p { font-size: 14px; margin-top: 16px; letter-spacing: 1px; }
   }
   .mirror-side-note { display: none; }
-  .mirror-invitation { left: 25px; right: 25px; bottom: 184px; > p { font-size: 10px; line-height: 1.8; letter-spacing: .5px; } }
+  .mirror-invitation > p { font-size: 11px; line-height: 1.9; letter-spacing: .5px; }
   .immersive-actions { gap: 21px; margin-top: 17px; > button { font-size: 9px; gap: 9px; } }
   .mist-store { font-size: 11px; padding: 13px 16px; gap: 10px; > svg:first-child { width: 21px; } > svg:last-child { margin-left: 13px; width: 15px; } }
   .mirror-scroll { bottom: 18px; left: 25px; right: 25px; gap: 16px; font-size: 8px; line-height: 1.8; }
@@ -133,9 +175,10 @@
   .glass-cursor { display: none; }
   .postcard-arrow-line { left: auto; right: 5px; bottom: -57px; width: 75px; height: 75px; }
   .is-english {
-    .mist-title h1 { font-size: clamp(44px, 12.5vw, 73px); letter-spacing: -2.7px; line-height: 1.2; }
+    .mirror-copy { width: auto; }
+    .mist-title h1 { font-size: clamp(37px, min(11.5vw, 7.5svh), 64px); letter-spacing: -.04em; line-height: 1.16; }
     .mist-title h1 > span:last-child { margin-left: 0; }
-    .mist-title > p { font-size: 14px; margin-left: 6%; letter-spacing: 0; }
+    .mist-title > p { font-size: 14px; letter-spacing: 0; }
     .mirror-invitation > p { font-size: 11px; }
     .mirror-scroll { max-width: none; font-size: 7px; line-height: 1.8; letter-spacing: 0; }
     .mirror-instruction { max-width: 43%; > p { font-size: 7px; } > span { font-size: 5px; letter-spacing: .5px; } }
@@ -147,15 +190,15 @@
   .mirror-instruction { max-width: 43%; }
   .immersive-actions { gap: 14px; }
   .mist-store { padding-inline: 12px; > svg:last-child { margin-left: 5px; } }
-  .mirror-invitation { left: 22px; right: 22px; }
 }
 @media (max-height: 800px) and (min-width: 601px) {
-  .mist-title { top: 23%; h1 { font-size: min(10.5vw, 16svh); } > p { display: none; } }
+  .mirror-copy { gap: 24px; }
+  .mist-title { h1 { font-size: clamp(68px, min(9vw, 13svh), 112px); } > p { display: none; } }
   .mirror-invitation > p { font-size: 11px; line-height: 1.8; }
-  .is-english .mist-title h1 { font-size: min(7.3vw, 11svh); }
+  .is-english .mist-title h1 { font-size: clamp(45px, min(6.3vw, 11svh), 88px); }
 }
 @media (max-height: 760px) and (max-width: 600px) {
-  .mist-title { top: 21%; > p { display: none; } }
+  .mirror-copy { gap: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .mist-title-line { will-change: auto; }

@@ -6,6 +6,8 @@ import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
 import AppIcon from './components/AppIcon.vue'
 import FogMirror from './components/FogMirror.vue'
 import AppShowcase from './components/AppShowcase.vue'
+import MistMemories from './components/MistMemories.vue'
+import ThemeMist from './components/ThemeMist.vue'
 import { screenshotUrl } from './screenshots'
 import { usePreferences } from './composables/usePreferences'
 
@@ -15,9 +17,12 @@ const { locale, theme, copy: c, setLocale, toggleTheme } = usePreferences()
 const root = ref<HTMLElement>()
 const heroStage = ref<HTMLElement>()
 const mirror = ref<InstanceType<typeof FogMirror>>()
+const themeMist = ref<InstanceType<typeof ThemeMist>>()
 const inHandoff = ref(false)
 const previewIndex = ref(1)
 const menuOpen = ref(false)
+const headerOnPaper = ref(false)
+const heroCollapsed = ref(false)
 const activeMood = ref('morning')
 const privacyDialog = ref<HTMLDialogElement>()
 const interfaceDialog = ref<HTMLDialogElement>()
@@ -27,6 +32,14 @@ let animationContext: gsap.Context | undefined
 let motion: gsap.MatchMedia | undefined
 let events: AbortController | undefined
 let refreshFrame = 0
+let headerObserver: IntersectionObserver | undefined
+
+function changeTheme(event: MouseEvent) {
+  const source = event.currentTarget as HTMLElement
+  const apply = async () => { toggleTheme(); await nextTick() }
+  if (themeMist.value) void themeMist.value.run(source, theme.value !== 'dark', apply, () => mirror.value?.breatheForTheme())
+  else void apply()
+}
 
 function closeMenu() { menuOpen.value = false }
 function openPrivacy() { closeMenu(); privacyDialog.value?.showModal() }
@@ -47,6 +60,10 @@ onMounted(() => {
   window.addEventListener('keydown', event => {
     if (event.key === 'Escape') closeMenu()
   }, { signal: events.signal })
+  headerObserver = new IntersectionObserver(entries => {
+    headerOnPaper.value = !(entries[0]?.isIntersecting ?? false)
+  }, { rootMargin: '-100px 0px 0px 0px', threshold: 0 })
+  if (heroStage.value) headerObserver.observe(heroStage.value)
   animationContext = gsap.context(() => {
     motion = gsap.matchMedia()
     motion.add('(prefers-reduced-motion: no-preference)', () => {
@@ -55,7 +72,6 @@ onMounted(() => {
         ease: 'power2.out', clearProps: 'transform,opacity,filter',
       })
       gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach(element => {
-        if (element.closest('.postcard-wall')) return
         gsap.fromTo(element, { y: 30, opacity: 0 }, {
           y: 0, opacity: 1, duration: 0.9, ease: 'power2.out',
           clearProps: 'transform,opacity',
@@ -65,20 +81,6 @@ onMounted(() => {
       gsap.fromTo('.weather-window', { yPercent: 9, rotate: -7 }, {
         yPercent: -7, rotate: 3, ease: 'none',
         scrollTrigger: { trigger: '#weather', start: 'top bottom', end: 'bottom top', scrub: 1 },
-      })
-      gsap.fromTo('.postcard', {
-        y: 120, rotation: index => [-15, 7, -10][index] || 0,
-        x: index => [-50, 0, 50][index] || 0,
-      }, {
-        y: 0, x: 0, rotation: 0, ease: 'power1.out', stagger: 0.08,
-        scrollTrigger: { trigger: '.postcard-wall', start: 'top 88%', end: 'top 20%', scrub: 1 },
-      })
-      gsap.utils.toArray<SVGPathElement>('.postcard-arrow-line path').forEach(path => {
-        const length = path.getTotalLength()
-        gsap.fromTo(path, { strokeDasharray: length, strokeDashoffset: length }, {
-          strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut',
-          scrollTrigger: { trigger: path, start: 'top 85%', once: true },
-        })
       })
     })
     motion.add('(min-width: 1000px) and (min-height: 700px) and (prefers-reduced-motion: no-preference)', () => {
@@ -107,7 +109,10 @@ onMounted(() => {
         .fromTo('.handoff-phone', { autoAlpha: 0, scale: 1.045 }, { autoAlpha: 1, scale: 1, duration: 0.28 }, 0.51)
         .to('.fullscreen-mirror', { autoAlpha: 0, duration: 0.2 }, 0.65)
         .fromTo('.handoff-copy', { y: 35, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.3 }, 0.63)
-      return () => { inHandoff.value = false }
+      // Follow the rendered timeline, including scrub easing, rather than the
+      // raw scroll position. Frost appears only once the full mirror is folded.
+      scene.eventCallback('onUpdate', () => { heroCollapsed.value = scene.time() >= 0.76 })
+      return () => { inHandoff.value = false; heroCollapsed.value = false }
     })
   }, root.value)
   refreshFrame = requestAnimationFrame(() => {
@@ -121,14 +126,17 @@ onBeforeUnmount(() => {
   motion?.revert()
   animationContext?.revert()
   events?.abort()
+  headerObserver?.disconnect()
 })
 </script>
 
 <template>
   <div ref="root" class="site-shell" :class="{ 'is-english': locale === 'en' }">
+    <ThemeMist ref="themeMist" />
     <a class="skip-link" href="#main">{{ c.skip }}</a>
 
-    <header class="site-header">
+    <header class="site-header" :class="{ 'is-on-paper': headerOnPaper || heroCollapsed }">
+      <div class="header-inner">
       <a href="#" class="brand" :aria-label="c.home" @click="closeMenu">
         <img src="/appicon.jpg" alt="" width="38" height="38" />
         <span>{{ c.brand }}<small>FOGGY MIRROR</small></span>
@@ -149,8 +157,9 @@ onBeforeUnmount(() => {
           :aria-label="theme === 'dark' ? c.light : c.dark"
           :title="theme === 'dark' ? c.light : c.dark"
           :aria-pressed="theme === 'dark'"
-          @click="toggleTheme"
-        ><AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="20" /></button>
+          :aria-busy="themeMist?.busy || undefined"
+          @click="changeTheme"
+        ><span class="theme-toggle-icon"><AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="20" /></span></button>
         <a class="header-download" :href="appStoreUrl" target="_blank" rel="noopener noreferrer">
           {{ c.download }}<AppIcon name="arrow" :size="16" />
         </a>
@@ -165,20 +174,21 @@ onBeforeUnmount(() => {
           <span>0{{ index + 1 }} / {{ label }}</span><AppIcon name="arrow" :size="18" />
         </a>
       </nav>
+      </div>
     </header>
 
     <main id="main">
       <section id="play" class="immersive-hero" aria-labelledby="hero-title">
         <div ref="heroStage" class="immersive-stage">
-          <FogMirror ref="mirror" :mood="activeMood" :dark="theme === 'dark'" :labels="c.mirror" :inert="inHandoff" />
+          <FogMirror ref="mirror" :mood="activeMood" :dark="theme === 'dark'" :labels="c.mirror" :inactive="inHandoff" :inert="inHandoff" />
           <div class="mirror-intro">
             <div class="mirror-edition"><span>FOGGY MIRROR / INTERACTIVE GLASS</span><span>{{ c.immersion.label }}</span></div>
-            <div class="mist-title">
+            <div class="mirror-copy">
+              <div class="mist-title">
               <span class="micro-label">{{ c.hero.label }}</span>
               <h1 id="hero-title"><span class="mist-title-line">{{ c.hero.lineOne }}</span><span class="mist-title-line">{{ c.hero.lineTwo }}</span></h1>
               <p class="handwritten">{{ c.hero.aside }}</p>
             </div>
-            <p class="mirror-side-note handwritten">{{ c.immersion.hint }}</p>
             <div class="mirror-invitation">
               <p class="preserve-lines">{{ c.hero.description }}</p>
               <div class="immersive-actions">
@@ -186,6 +196,8 @@ onBeforeUnmount(() => {
                 <button @click="openInterface()">{{ c.hero.preview }}<AppIcon name="arrow" :size="15" /></button>
               </div>
             </div>
+            </div>
+            <p class="mirror-side-note handwritten">{{ c.immersion.hint }}</p>
             <a class="mirror-scroll" href="#story"><span>{{ c.immersion.scroll }}</span><span class="scroll-line" aria-hidden="true"></span><AppIcon name="down" :size="17" /></a>
           </div>
           <span class="handoff-word" aria-hidden="true">POCKET WONDER.</span>
@@ -232,42 +244,7 @@ onBeforeUnmount(() => {
         <div class="weather-bottom page-width"><span>FOGGY MIRROR / {{ selectedMood.word.toUpperCase() }}</span><span>{{ c.weather.note }}</span></div>
       </section>
 
-      <section id="postcards" class="postcard-section page-width" aria-labelledby="postcards-title">
-        <div class="postcard-heading" data-reveal>
-          <span class="micro-label">{{ c.moments.label }}</span>
-          <h2 id="postcards-title"><span v-for="line in c.moments.title" :key="line">{{ line }}</span></h2>
-          <p class="preserve-lines">{{ c.moments.description }}</p>
-          <svg class="postcard-arrow-line" viewBox="0 0 150 115" aria-hidden="true"><path d="M8 5c74-8 141 38 101 91m-12-21 11 25 29-10" /></svg>
-        </div>
-        <div class="postcard-wall">
-          <figure class="postcard postcard-self" data-reveal>
-            <div class="postcard-picture self-picture">
-              <span class="postcard-date">{{ c.moments.toSelf }}</span>
-              <span class="self-writing handwritten"><span v-for="line in c.moments.self" :key="line">{{ line }}</span></span>
-              <span class="drawn-star" aria-hidden="true">✷</span>
-            </div>
-            <figcaption><span>{{ c.moments.selfCaption }}</span><span>01 / TO MYSELF</span></figcaption>
-          </figure>
-          <figure class="postcard postcard-cat" data-reveal>
-            <span class="paper-tape" aria-hidden="true"></span>
-            <div class="postcard-picture cat-picture">
-              <img src="/images/cat.jpg" :alt="c.moments.catAlt" width="667" height="1000" loading="lazy" />
-              <span class="cat-writing handwritten">{{ c.moments.cat }}</span>
-              <svg class="cat-crown" viewBox="0 0 100 65" aria-hidden="true"><path d="m10 49-3-35 27 18L51 5l15 27L93 14l-6 35-77 1Zm5 12h67" /></svg>
-            </div>
-            <figcaption><span>{{ c.moments.catCaption }}</span><span>02 / MOOD</span></figcaption>
-          </figure>
-          <figure class="postcard postcard-love" data-reveal>
-            <div class="postcard-picture love-picture">
-              <span class="love-writing handwritten">{{ c.moments.love }}<i aria-hidden="true">♡</i></span>
-              <span class="love-date" aria-hidden="true">SENT FROM THE HEART.</span>
-            </div>
-            <figcaption><span>{{ c.moments.loveCaption }}</span><span>03 / TO YOU</span></figcaption>
-          </figure>
-          <span class="wall-scribble handwritten" aria-hidden="true">little things,<br />big feelings.<svg viewBox="0 0 110 60"><path d="M4 8c56-16 99 4 84 41m-9-10 7 13 14-6" /></svg></span>
-        </div>
-        <p class="postcard-footnote">{{ c.moments.footnote }}</p>
-      </section>
+      <MistMemories :copy="c.moments" :locale="locale" :dark="theme === 'dark'" />
 
       <section class="privacy-note page-width" data-reveal aria-labelledby="privacy-title">
         <span class="privacy-marker"><AppIcon name="shield" :size="29" /></span>
