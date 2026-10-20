@@ -184,6 +184,31 @@ html { scroll-padding-top: 118px; }
     .mirror-instruction { max-width: 43%; > p { font-size: 7px; } > span { font-size: 5px; letter-spacing: .5px; } }
   }
 }
+// The same mirror-to-phone story runs on phones and shorter viewports.
+// svh keeps its composition steady when the browser's address bar retracts.
+@media (max-width: 999px), (max-height: 699px) {
+  .immersive-stage { --handoff-phone-height: min(46svh, 390px, calc((100vw - 64px) * 2.03975)); }
+  .handoff-phone { top: 40svh; height: var(--handoff-phone-height); }
+  .handoff-word { top: 24svh; left: -8%; font-size: clamp(70px, 18vw, 160px); letter-spacing: -5px; }
+  .handoff-copy {
+    top: calc(40svh + var(--handoff-phone-height) / 2 + 24px);
+    left: 24px; right: 24px; width: auto; text-align: center;
+    > .micro-label { font-size: 6px; letter-spacing: 1px; }
+    h2 { font-size: clamp(26px, 5vw, 38px); line-height: 1.25; letter-spacing: -.5px; margin-top: 12px; }
+    p { max-width: 320px; margin: 12px auto 0; font-size: 10px; line-height: 1.8; }
+  }
+  .is-english .handoff-copy h2 { font-size: clamp(25px, 5.5vw, 36px); letter-spacing: -.8px; line-height: 1.2; }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .handoff-phone { left: 26%; top: calc(50svh + 50px); height: min(calc(100svh - 140px), 360px, calc((42vw - 32px) * 2.03975)); }
+  .handoff-copy {
+    top: max(108px, 32svh); left: 51%; right: 24px; text-align: left;
+    h2 { font-size: 28px; }
+    p { max-width: 280px; margin-left: 0; }
+  }
+  .is-english .handoff-copy h2 { font-size: 27px; }
+  .handoff-word { top: 23svh; font-size: 17vw; }
+}
 @media (max-width: 370px) {
   .mirror-toolbar { left: 18px; right: 18px; gap: 8px; }
   .mirror-toolbar .mirror-tools { gap: 3px; button { width: 33px; height: 37px; } }

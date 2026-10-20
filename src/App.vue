@@ -12,10 +12,13 @@ import { screenshotUrl } from './screenshots'
 import { usePreferences } from './composables/usePreferences'
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin)
+// Keep the pinned scene steady while mobile browser chrome retracts.
+ScrollTrigger.config({ ignoreMobileResize: true })
 const appStoreUrl = 'https://apps.apple.com/us/app/%E9%9B%BE%E9%95%9C/id6821307625'
 const { locale, theme, copy: c, setLocale, toggleTheme } = usePreferences()
 const root = ref<HTMLElement>()
 const heroStage = ref<HTMLElement>()
+const handoffPhone = ref<HTMLButtonElement>()
 const mirror = ref<InstanceType<typeof FogMirror>>()
 const themeMist = ref<InstanceType<typeof ThemeMist>>()
 const inHandoff = ref(false)
@@ -83,24 +86,30 @@ onMounted(() => {
         scrollTrigger: { trigger: '#weather', start: 'top bottom', end: 'bottom top', scrub: 1 },
       })
     })
-    motion.add('(min-width: 1000px) and (min-height: 700px) and (prefers-reduced-motion: no-preference)', () => {
+    motion.add({
+      spacious: '(min-width: 1000px) and (min-height: 700px)',
+      animated: '(prefers-reduced-motion: no-preference)',
+    }, context => {
+      if (!context.conditions?.animated) return
+      const compact = !context.conditions.spacious
       const aperture = () => {
-        const h = heroStage.value!.clientHeight
-        const w = heroStage.value!.clientWidth
-        const phoneHeight = Math.min(h * 0.7, 650)
-        const top = (h - phoneHeight) / 2
-        const side = (w - phoneHeight * 956 / 1950) / 2
-        return 'inset(' + top + 'px ' + side + 'px ' + top + 'px ' + side + 'px round 40px)'
+        const stage = heroStage.value!
+        const phone = handoffPhone.value!
+        // Read layout dimensions rather than the animated screen rectangle so
+        // the cutout matches the responsive phone in portrait and landscape.
+        const top = phone.offsetTop - phone.offsetHeight / 2
+        const left = phone.offsetLeft - phone.offsetWidth / 2
+        const right = stage.clientWidth - left - phone.offsetWidth
+        const bottom = stage.clientHeight - top - phone.offsetHeight
+        const corner = Math.min(40, phone.offsetWidth * .12)
+        return 'inset(' + top + 'px ' + right + 'px ' + bottom + 'px ' + left + 'px round ' + corner + 'px)'
       }
       const scene = gsap.timeline({
         scrollTrigger: {
           trigger: heroStage.value, pin: heroStage.value, start: 'top top',
-          end: '+=105%', scrub: 1, anticipatePin: 1, invalidateOnRefresh: true, refreshPriority: 10,
-          onUpdate: self => {
-            const next = self.progress > 0.45
-            if (next && !inHandoff.value) mirror.value?.finishDrawing()
-            inHandoff.value = next
-          },
+          end: () => '+=' + Math.round(Math.min(heroStage.value!.clientHeight, window.innerHeight) * (compact ? .95 : 1.05)),
+          scrub: compact ? .45 : 1, anticipatePin: 1,
+          invalidateOnRefresh: true, refreshPriority: 10,
         },
       })
       scene.to('.mirror-intro', { yPercent: -10, autoAlpha: 0, duration: 0.28 }, 0)
@@ -108,10 +117,14 @@ onMounted(() => {
         .fromTo('.handoff-word', { xPercent: -8, autoAlpha: 0 }, { xPercent: 0, autoAlpha: 0.08, duration: 0.7 }, 0.2)
         .fromTo('.handoff-phone', { autoAlpha: 0, scale: 1.045 }, { autoAlpha: 1, scale: 1, duration: 0.28 }, 0.51)
         .to('.fullscreen-mirror', { autoAlpha: 0, duration: 0.2 }, 0.65)
-        .fromTo('.handoff-copy', { y: 35, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.3 }, 0.63)
-      // Follow the rendered timeline, including scrub easing, rather than the
-      // raw scroll position. Frost appears only once the full mirror is folded.
-      scene.eventCallback('onUpdate', () => { heroCollapsed.value = scene.time() >= 0.76 })
+        .fromTo('.handoff-copy', { y: compact ? 22 : 35, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.3 }, 0.63)
+      // Follow the rendered timeline in both directions, including scrub easing.
+      scene.eventCallback('onUpdate', () => {
+        const next = scene.time() >= .45
+        if (next && !inHandoff.value) mirror.value?.finishDrawing()
+        inHandoff.value = next
+        heroCollapsed.value = scene.time() >= .76
+      })
       return () => { inHandoff.value = false; heroCollapsed.value = false }
     })
   }, root.value)
@@ -201,7 +214,7 @@ onBeforeUnmount(() => {
             <a class="mirror-scroll" href="#story"><span>{{ c.immersion.scroll }}</span><span class="scroll-line" aria-hidden="true"></span><AppIcon name="down" :size="17" /></a>
           </div>
           <span class="handoff-word" aria-hidden="true">POCKET WONDER.</span>
-          <button class="handoff-phone" :inert="!inHandoff" :aria-label="c.hero.preview" @click="openInterface()">
+          <button ref="handoffPhone" class="handoff-phone" :inert="!inHandoff" :aria-label="c.hero.preview" @click="openInterface()">
             <img :src="screenshotUrl(locale, 1)" :alt="c.showcase.items[1]?.alt" width="720" height="1470" />
           </button>
           <div class="handoff-copy">
