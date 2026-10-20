@@ -1,6 +1,323 @@
 <script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
+import AppIcon from './components/AppIcon.vue'
+import FogMirror from './components/FogMirror.vue'
+import AppShowcase from './components/AppShowcase.vue'
+import { screenshotUrl } from './screenshots'
+import { usePreferences } from './composables/usePreferences'
+
+gsap.registerPlugin(ScrollTrigger, ScrollToPlugin)
+const appStoreUrl = 'https://apps.apple.com/us/app/%E9%9B%BE%E9%95%9C/id6821307625'
+const { locale, theme, copy: c, setLocale, toggleTheme } = usePreferences()
+const root = ref<HTMLElement>()
+const heroStage = ref<HTMLElement>()
+const mirror = ref<InstanceType<typeof FogMirror>>()
+const inHandoff = ref(false)
+const previewIndex = ref(1)
+const menuOpen = ref(false)
+const activeMood = ref('morning')
+const privacyDialog = ref<HTMLDialogElement>()
+const interfaceDialog = ref<HTMLDialogElement>()
+const selectedMood = computed(() => c.value.moods.find(mood => mood.id === activeMood.value) || c.value.moods[0]!)
+const navTargets = ['#play', '#story', '#weather']
+let animationContext: gsap.Context | undefined
+let motion: gsap.MatchMedia | undefined
+let events: AbortController | undefined
+
+function closeMenu() { menuOpen.value = false }
+function openPrivacy() { closeMenu(); privacyDialog.value?.showModal() }
+function openInterface(index = 1) { previewIndex.value = index; interfaceDialog.value?.showModal() }
+function dismissBackdrop(event: MouseEvent, dialog?: HTMLDialogElement) {
+  if (event.target !== dialog) return
+  const rect = dialog.getBoundingClientRect()
+  if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close()
+}
+
+watch(locale, async () => {
+  await nextTick()
+  ScrollTrigger.refresh()
+})
+
+onMounted(() => {
+  events = new AbortController()
+  window.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeMenu()
+  }, { signal: events.signal })
+  animationContext = gsap.context(() => {
+    motion = gsap.matchMedia()
+    motion.add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.fromTo('.mist-title-line', { y: 25, opacity: 0, filter: 'blur(18px)' }, {
+        y: 0, opacity: 1, filter: 'blur(0px)', duration: 1.65, stagger: 0.17,
+        ease: 'power2.out', clearProps: 'transform,opacity,filter',
+      })
+      gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach(element => {
+        if (element.closest('.postcard-wall')) return
+        gsap.fromTo(element, { y: 30, opacity: 0 }, {
+          y: 0, opacity: 1, duration: 0.9, ease: 'power2.out',
+          clearProps: 'transform,opacity',
+          scrollTrigger: { trigger: element, start: 'top 93%', once: true },
+        })
+      })
+      gsap.fromTo('.weather-window', { yPercent: 9, rotate: -7 }, {
+        yPercent: -7, rotate: 3, ease: 'none',
+        scrollTrigger: { trigger: '#weather', start: 'top bottom', end: 'bottom top', scrub: 1 },
+      })
+      gsap.fromTo('.postcard', {
+        y: 120, rotation: index => [-15, 7, -10][index] || 0,
+        x: index => [-50, 0, 50][index] || 0,
+      }, {
+        y: 0, x: 0, rotation: 0, ease: 'power1.out', stagger: 0.08,
+        scrollTrigger: { trigger: '.postcard-wall', start: 'top 88%', end: 'top 20%', scrub: 1 },
+      })
+      gsap.utils.toArray<SVGPathElement>('.postcard-arrow-line path').forEach(path => {
+        const length = path.getTotalLength()
+        gsap.fromTo(path, { strokeDasharray: length, strokeDashoffset: length }, {
+          strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut',
+          scrollTrigger: { trigger: path, start: 'top 85%', once: true },
+        })
+      })
+    })
+    motion.add('(min-width: 1000px) and (min-height: 700px) and (prefers-reduced-motion: no-preference)', () => {
+      const aperture = () => {
+        const h = heroStage.value!.clientHeight
+        const w = heroStage.value!.clientWidth
+        const phoneHeight = Math.min(h * 0.7, 650)
+        const top = (h - phoneHeight) / 2
+        const side = (w - phoneHeight * 956 / 1950) / 2
+        return 'inset(' + top + 'px ' + side + 'px ' + top + 'px ' + side + 'px round 40px)'
+      }
+      const scene = gsap.timeline({
+        scrollTrigger: {
+          trigger: heroStage.value, pin: heroStage.value, start: 'top top',
+          end: '+=105%', scrub: 1, anticipatePin: 1, invalidateOnRefresh: true,
+          onUpdate: self => {
+            const next = self.progress > 0.45
+            if (next && !inHandoff.value) mirror.value?.finishDrawing()
+            inHandoff.value = next
+          },
+        },
+      })
+      scene.to('.mirror-intro', { yPercent: -10, autoAlpha: 0, duration: 0.28 }, 0)
+        .to('.fullscreen-mirror', { clipPath: aperture, duration: 0.72, ease: 'power2.inOut' }, 0.04)
+        .fromTo('.handoff-word', { xPercent: -8, autoAlpha: 0 }, { xPercent: 0, autoAlpha: 0.08, duration: 0.7 }, 0.2)
+        .fromTo('.handoff-phone', { autoAlpha: 0, scale: 1.045 }, { autoAlpha: 1, scale: 1, duration: 0.28 }, 0.51)
+        .to('.fullscreen-mirror', { autoAlpha: 0, duration: 0.2 }, 0.65)
+        .fromTo('.handoff-copy', { y: 35, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.3 }, 0.63)
+      return () => { inHandoff.value = false }
+    })
+  }, root.value)
+})
+
+onBeforeUnmount(() => {
+  motion?.revert()
+  animationContext?.revert()
+  events?.abort()
+})
 </script>
 
 <template>
+  <div ref="root" class="site-shell" :class="{ 'is-english': locale === 'en' }">
+    <a class="skip-link" href="#main">{{ c.skip }}</a>
 
+    <header class="site-header">
+      <a href="#" class="brand" :aria-label="c.home" @click="closeMenu">
+        <img src="/appicon.jpg" alt="" width="38" height="38" />
+        <span>{{ c.brand }}<small>FOGGY MIRROR</small></span>
+      </a>
+      <nav class="desktop-nav" :aria-label="c.navigation">
+        <a v-for="(label, index) in c.nav" :key="index" :href="navTargets[index]">
+          <sup>0{{ index + 1 }}</sup>{{ label }}
+        </a>
+      </nav>
+      <div class="header-tools">
+        <div class="language-switch" role="group" :aria-label="c.language">
+          <button :aria-pressed="locale === 'zh'" lang="zh-CN" @click="setLocale('zh')">中</button>
+          <span aria-hidden="true">/</span>
+          <button :aria-pressed="locale === 'en'" lang="en" @click="setLocale('en')">EN</button>
+        </div>
+        <button
+          class="theme-toggle icon-button"
+          :aria-label="theme === 'dark' ? c.light : c.dark"
+          :title="theme === 'dark' ? c.light : c.dark"
+          :aria-pressed="theme === 'dark'"
+          @click="toggleTheme"
+        ><AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="20" /></button>
+        <a class="header-download" :href="appStoreUrl" target="_blank" rel="noopener noreferrer">
+          {{ c.download }}<AppIcon name="arrow" :size="16" />
+        </a>
+        <button
+          class="menu-toggle icon-button"
+          :aria-expanded="menuOpen" aria-controls="mobile-nav"
+          :aria-label="menuOpen ? c.close : c.menu" @click="menuOpen = !menuOpen"
+        ><AppIcon :name="menuOpen ? 'close' : 'menu'" :size="22" /></button>
+      </div>
+      <nav v-if="menuOpen" id="mobile-nav" class="mobile-nav" :aria-label="c.navigation">
+        <a v-for="(label, index) in c.nav" :key="index" :href="navTargets[index]" @click="closeMenu">
+          <span>0{{ index + 1 }} / {{ label }}</span><AppIcon name="arrow" :size="18" />
+        </a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section id="play" class="immersive-hero" aria-labelledby="hero-title">
+        <div ref="heroStage" class="immersive-stage">
+          <FogMirror ref="mirror" :mood="activeMood" :dark="theme === 'dark'" :labels="c.mirror" :inert="inHandoff" />
+          <div class="mirror-intro">
+            <div class="mirror-edition"><span>FOGGY MIRROR / INTERACTIVE GLASS</span><span>{{ c.immersion.label }}</span></div>
+            <div class="mist-title">
+              <span class="micro-label">{{ c.hero.label }}</span>
+              <h1 id="hero-title"><span class="mist-title-line">{{ c.hero.lineOne }}</span><span class="mist-title-line">{{ c.hero.lineTwo }}</span></h1>
+              <p class="handwritten">{{ c.hero.aside }}</p>
+            </div>
+            <p class="mirror-side-note handwritten">{{ c.immersion.hint }}</p>
+            <div class="mirror-invitation">
+              <p class="preserve-lines">{{ c.hero.description }}</p>
+              <div class="immersive-actions">
+                <a class="mist-store" :href="appStoreUrl" target="_blank" rel="noopener noreferrer"><AppIcon name="apple" :size="23" />{{ c.download }}<AppIcon name="arrow" :size="17" /></a>
+                <button @click="openInterface()">{{ c.hero.preview }}<AppIcon name="arrow" :size="15" /></button>
+              </div>
+            </div>
+            <a class="mirror-scroll" href="#story"><span>{{ c.immersion.scroll }}</span><span class="scroll-line" aria-hidden="true"></span><AppIcon name="down" :size="17" /></a>
+          </div>
+          <span class="handoff-word" aria-hidden="true">POCKET WONDER.</span>
+          <button class="handoff-phone" :inert="!inHandoff" :aria-label="c.hero.preview" @click="openInterface()">
+            <img :src="screenshotUrl(locale, 1)" :alt="c.showcase.items[1]?.alt" width="720" height="1470" />
+          </button>
+          <div class="handoff-copy">
+            <span class="micro-label">FROM A WINDOW TO YOUR WORLD</span>
+            <h2><span v-for="line in c.immersion.handoff" :key="line">{{ line }}</span></h2>
+            <p>{{ c.immersion.handoffNote }}</p>
+          </div>
+        </div>
+      </section>
+
+      <AppShowcase id="story" :locale="locale" @preview="openInterface" />
+
+      <section id="weather" class="weather-section" :class="'weather-' + activeMood" aria-labelledby="weather-title">
+        <div class="weather-top page-width" data-reveal>
+          <span class="micro-label">{{ c.weather.label }}</span>
+          <div><h2 id="weather-title">{{ c.weather.title }}</h2><p>{{ c.weather.subtitle }}</p></div>
+          <span class="weather-symbol" aria-hidden="true"><AppIcon :name="selectedMood.icon" :size="37" /></span>
+        </div>
+        <div class="weather-stage page-width">
+          <span class="weather-word" aria-hidden="true">{{ selectedMood.word }}</span>
+          <div class="weather-selector" role="group" :aria-label="c.weather.select" data-reveal>
+            <button v-for="(mood, index) in c.moods" :key="mood.id" :aria-pressed="activeMood === mood.id" @click="activeMood = mood.id">
+              <span class="weather-selector-number">0{{ index + 1 }}</span>
+              <AppIcon :name="mood.icon" :size="19" />
+              <span>{{ mood.name }}</span><i aria-hidden="true">↗</i>
+            </button>
+          </div>
+          <figure class="weather-window" data-reveal>
+            <img src="/images/fog-friend.jpg" :alt="c.weather.imageAlt" width="1080" height="1920" loading="lazy" />
+            <div class="weather-filter"></div>
+            <figcaption class="handwritten">{{ c.weather.caption }}</figcaption>
+            <span class="weather-clock" aria-hidden="true">{{ selectedMood.time }}</span>
+          </figure>
+          <div class="weather-reading" aria-live="polite" aria-atomic="true" data-reveal>
+            <span class="weather-reading-index">/ 0{{ c.moods.indexOf(selectedMood) + 1 }}</span>
+            <h3>{{ selectedMood.line }}</h3><p>{{ selectedMood.description }}</p>
+            <a class="text-link" href="#play">{{ c.weather.preview }}<AppIcon name="arrow" :size="17" /></a>
+          </div>
+        </div>
+        <div class="weather-bottom page-width"><span>FOGGY MIRROR / {{ selectedMood.word.toUpperCase() }}</span><span>{{ c.weather.note }}</span></div>
+      </section>
+
+      <section id="postcards" class="postcard-section page-width" aria-labelledby="postcards-title">
+        <div class="postcard-heading" data-reveal>
+          <span class="micro-label">{{ c.moments.label }}</span>
+          <h2 id="postcards-title"><span v-for="line in c.moments.title" :key="line">{{ line }}</span></h2>
+          <p class="preserve-lines">{{ c.moments.description }}</p>
+          <svg class="postcard-arrow-line" viewBox="0 0 150 115" aria-hidden="true"><path d="M8 5c74-8 141 38 101 91m-12-21 11 25 29-10" /></svg>
+        </div>
+        <div class="postcard-wall">
+          <figure class="postcard postcard-self" data-reveal>
+            <div class="postcard-picture self-picture">
+              <span class="postcard-date">{{ c.moments.toSelf }}</span>
+              <span class="self-writing handwritten"><span v-for="line in c.moments.self" :key="line">{{ line }}</span></span>
+              <span class="drawn-star" aria-hidden="true">✷</span>
+            </div>
+            <figcaption><span>{{ c.moments.selfCaption }}</span><span>01 / TO MYSELF</span></figcaption>
+          </figure>
+          <figure class="postcard postcard-cat" data-reveal>
+            <span class="paper-tape" aria-hidden="true"></span>
+            <div class="postcard-picture cat-picture">
+              <img src="/images/cat.jpg" :alt="c.moments.catAlt" width="667" height="1000" loading="lazy" />
+              <span class="cat-writing handwritten">{{ c.moments.cat }}</span>
+              <svg class="cat-crown" viewBox="0 0 100 65" aria-hidden="true"><path d="m10 49-3-35 27 18L51 5l15 27L93 14l-6 35-77 1Zm5 12h67" /></svg>
+            </div>
+            <figcaption><span>{{ c.moments.catCaption }}</span><span>02 / MOOD</span></figcaption>
+          </figure>
+          <figure class="postcard postcard-love" data-reveal>
+            <div class="postcard-picture love-picture">
+              <span class="love-writing handwritten">{{ c.moments.love }}<i aria-hidden="true">♡</i></span>
+              <span class="love-date" aria-hidden="true">SENT FROM THE HEART.</span>
+            </div>
+            <figcaption><span>{{ c.moments.loveCaption }}</span><span>03 / TO YOU</span></figcaption>
+          </figure>
+          <span class="wall-scribble handwritten" aria-hidden="true">little things,<br />big feelings.<svg viewBox="0 0 110 60"><path d="M4 8c56-16 99 4 84 41m-9-10 7 13 14-6" /></svg></span>
+        </div>
+        <p class="postcard-footnote">{{ c.moments.footnote }}</p>
+      </section>
+
+      <section class="privacy-note page-width" data-reveal aria-labelledby="privacy-title">
+        <span class="privacy-marker"><AppIcon name="shield" :size="29" /></span>
+        <div><span class="micro-label">{{ c.privacy.label }}</span><h2 id="privacy-title">{{ c.privacy.title }}</h2><p>{{ c.privacy.summary }}</p></div>
+        <button class="text-link" @click="openPrivacy">{{ c.privacy.more }}<AppIcon name="arrow" :size="17" /></button>
+      </section>
+
+      <section class="faq-section page-width" aria-labelledby="faq-title">
+        <div class="faq-intro" data-reveal><span class="micro-label">{{ c.faq.label }}</span><h2 id="faq-title">{{ c.faq.title }}</h2><span class="handwritten" aria-hidden="true">Q & a.</span></div>
+        <div class="faq-list" data-reveal>
+          <details v-for="(faq, index) in c.faq.items" :key="index">
+            <summary><span class="faq-number">0{{ index + 1 }}</span><span>{{ faq.question }}</span><AppIcon name="plus" :size="20" /></summary>
+            <p>{{ faq.answer }}</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="ending" aria-labelledby="ending-title">
+        <div class="ending-aura" aria-hidden="true"></div>
+        <div class="ending-inner page-width">
+          <span class="micro-label" data-reveal>{{ c.ending.label }}</span>
+          <h2 id="ending-title" data-reveal><span v-for="line in c.ending.title" :key="line">{{ line }}</span><span class="ending-asterisk" aria-hidden="true">✳</span></h2>
+          <div class="ending-bottom" data-reveal>
+            <div><p class="preserve-lines">{{ c.ending.description }}</p><span class="ending-platform">{{ c.ending.platform }}</span></div>
+            <a class="ending-download" :href="appStoreUrl" target="_blank" rel="noopener noreferrer">
+              <span><AppIcon name="apple" :size="24" />{{ c.download }}</span>
+              <span class="ending-download-arrow"><AppIcon name="arrow" :size="33" /></span>
+            </a>
+          </div>
+          <span class="ending-scribble handwritten" aria-hidden="true">{{ c.ending.note }}</span>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer page-width">
+      <a href="#" class="footer-brand">{{ c.brand }}<span>FOGGY MIRROR</span></a>
+      <p>{{ c.footer }}</p>
+      <div><button @click="openPrivacy">{{ c.privacy.more }}</button><span>© {{ new Date().getFullYear() }} FOGGY MIRROR</span></div>
+    </footer>
+
+    <dialog ref="privacyDialog" class="content-dialog" aria-labelledby="privacy-dialog-title" @click="dismissBackdrop($event, privacyDialog)">
+      <div class="dialog-content">
+        <button class="dialog-close icon-button" :aria-label="c.close" @click="privacyDialog?.close()"><AppIcon name="close" /></button>
+        <AppIcon name="shield" :size="35" />
+        <p class="micro-label">{{ c.privacy.label }}</p><h2 id="privacy-dialog-title">{{ c.privacy.title }}</h2>
+        <p v-for="paragraph in c.privacy.paragraphs" :key="paragraph">{{ paragraph }}</p>
+        <a class="text-link" :href="appStoreUrl" target="_blank" rel="noopener noreferrer">{{ c.privacy.store }}<AppIcon name="arrow" :size="17" /></a>
+      </div>
+    </dialog>
+    <dialog ref="interfaceDialog" class="content-dialog interface-dialog" aria-labelledby="interface-dialog-title" @click="dismissBackdrop($event, interfaceDialog)">
+      <div class="dialog-content">
+        <button class="dialog-close icon-button" :aria-label="c.close" @click="interfaceDialog?.close()"><AppIcon name="close" /></button>
+        <p class="micro-label">{{ c.preview.label }}</p><h2 id="interface-dialog-title">{{ c.preview.title }}</h2>
+        <img src="/images/app-interface.jpg" :alt="c.preview.alt" width="508" height="1100" loading="lazy" />
+        <p class="interface-caption">{{ c.preview.caption }}</p>
+      </div>
+    </dialog>
+  </div>
 </template>

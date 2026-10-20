@@ -1,0 +1,155 @@
+// The first viewport is one continuous piece of glass; chrome floats above it.
+.site-header {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  color: #f5faf7; border-bottom-color: #ffffff30;
+  .brand { text-shadow: 0 1px 12px #17394a22; }
+  .desktop-nav sup { color: #e1eef2a6; }
+  .language-switch button { color: #e3f0f2a8; }
+  .language-switch button[aria-pressed='true'] { color: #fff; }
+  .theme-toggle { border-color: #ffffff50; &:hover { background: #ffffff18; } }
+  .header-download { border-color: #ffffff80; }
+  .mobile-nav { color: var(--ink); }
+}
+.immersive-hero { position: relative; }
+.immersive-stage { position: relative; height: 100svh; min-height: 680px; overflow: hidden; isolation: isolate; background: var(--paper); }
+.fullscreen-mirror { position: absolute; inset: 0; z-index: 1; }
+.mirror-expanse { position: absolute; inset: 0; overflow: hidden; background: #718c9f; }
+.mirror-scene, .mirror-expanse .fog-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mirror-scene { object-fit: cover; object-position: 50% 40%; filter: brightness(var(--photo-brightness)); }
+.mirror-expanse .fog-canvas { touch-action: pan-y; cursor: crosshair; }
+.mirror-expanse.is-drawing .fog-canvas { touch-action: none; }
+.breath-wave { position: absolute; left: calc(50% - 150px); top: calc(52% - 150px); width: 300px; height: 300px; border: 1px solid #f2ffff7a; border-radius: 50%; opacity: 0; pointer-events: none; }
+.glass-cursor { position: absolute; left: 0; top: 0; width: 51px; height: 51px; margin: -25px 0 0 -25px; border: 1px solid #ffffff7a; color: #ffffffc9; border-radius: 50%; display: grid; place-items: center; font-size: 16px; font-weight: 200; opacity: 0; pointer-events: none; transition: opacity .25s; }
+@media (hover: hover) and (pointer: fine) {
+  .mirror-expanse:hover .glass-cursor { opacity: 1; }
+  .mirror-expanse .fog-canvas { cursor: none; }
+}
+.mirror-toolbar { position: absolute; bottom: 31px; right: 4.5%; display: flex; align-items: center; gap: 25px; color: #eff8f5; z-index: 7; }
+.mirror-instruction { text-align: right;
+  > span { display: block; font-size: 7px; letter-spacing: 1.3px; opacity: .7; margin-bottom: 9px; }
+  > p { font-size: 9px; letter-spacing: .6px; line-height: 1.8; }
+}
+.mirror-toolbar .mirror-tools { gap: 8px;
+  button { width: 43px; height: 43px; border: 1px solid #ffffff4d; background: #ffffff10; color: #fff; backdrop-filter: blur(10px); }
+  button:hover, button[aria-pressed='true'] { background: #eff7f0; color: #315167; border-color: #eff7f0; }
+}
+.mirror-intro { position: absolute; inset: 0; z-index: 3; color: #f5fbf6; pointer-events: none; background: linear-gradient(90deg, #17354b24 0%, transparent 70%), linear-gradient(0deg, #1c3e512e, transparent 32%); }
+.mirror-edition { position: absolute; top: 130px; left: 6%; right: 4.5%; display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 8px; letter-spacing: 1.8px; opacity: .78; }
+.mist-title { position: absolute; top: 24%; left: 8%; max-width: 85%;
+  > .micro-label { font-size: 9px; letter-spacing: 2px; opacity: .8; }
+  h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(100px, 10.5vw, 158px); letter-spacing: -6px; line-height: 1.18; margin-top: 17px; }
+  h1 > span { display: block; }
+  h1 > span:first-child { font-style: italic; font-weight: 300; }
+  h1 > span:last-child { margin-left: 18%; }
+  > p { font-size: 22px; letter-spacing: 2px; margin: 24px 0 0 18%; transform: rotate(-7deg); opacity: .85; }
+}
+.mist-title-line { will-change: transform, opacity; }
+.mirror-side-note { position: absolute; top: 41%; right: 5%; max-width: 160px; font-size: 18px; line-height: 1.8; letter-spacing: 2px; transform: rotate(7deg); opacity: .85; }
+.mirror-invitation { position: absolute; left: 8%; bottom: 13%;
+  > p { font-size: 12px; line-height: 1.9; letter-spacing: .7px; color: #e5eef0; }
+}
+.immersive-actions { display: flex; align-items: center; gap: 29px; margin-top: 21px;
+  > a, > button { pointer-events: auto; }
+  > button { display: flex; align-items: center; gap: 13px; padding: 13px 0; font-size: 10px; color: #f0f8f5; }
+}
+.mist-store { display: inline-flex; align-items: center; gap: 12px; padding: 14px 18px; background: #f1f7f0; border: 1px solid #f6fff4; border-radius: 40px; color: #2d4b5a; font-size: 12px; font-weight: 500; transition: background .25s, transform .25s;
+  > svg:last-child { margin-left: 18px; }
+  &:hover { transform: translateY(-3px); background: #fff; }
+}
+.mirror-scroll { position: absolute; bottom: 33px; left: 8%; display: flex; align-items: center; gap: 19px; font-size: 9px; letter-spacing: 1px; color: #e1eced; pointer-events: auto; padding: 12px 0; }
+.scroll-line { width: 90px; height: 1px; background: #e1eced66; }
+.handoff-phone { position: absolute; z-index: 5; top: 15%; left: 50%; height: min(70%, 650px); width: auto; aspect-ratio: 956 / 1950; padding: 0; transform: translateX(-50%); visibility: hidden; background: none;
+  > img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(10px 15px 18px var(--shadow)); }
+}
+.handoff-word { position: absolute; top: 37%; left: -3%; font-family: Georgia, serif; font-style: italic; font-size: clamp(100px, 14vw, 230px); letter-spacing: -9px; white-space: nowrap; color: var(--ink); visibility: hidden; opacity: 0; pointer-events: none; }
+.handoff-copy { position: absolute; top: 43%; left: 6%; width: 29%; z-index: 6; visibility: hidden;
+  > .micro-label { font-size: 7px; color: var(--muted); letter-spacing: 1.5px; }
+  h2 { font-family: var(--serif); font-size: clamp(30px, 3.5vw, 50px); line-height: 1.5; font-weight: 400; letter-spacing: -1px; margin-top: 22px; > span { display: block; } }
+  p { margin-top: 22px; font-size: 11px; line-height: 1.9; color: var(--muted); }
+}
+.postcard-arrow-line { position: absolute; left: 58%; bottom: -55px; width: 115px; height: 100px; fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linecap: round; }
+.screenshot-navigation { display: flex; align-items: center; justify-content: center; gap: 30px; margin-top: 24px;
+  button { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; }
+  button:first-child svg { transform: rotate(180deg); }
+  > span { font-family: Georgia, serif; font-size: 10px; color: var(--muted); letter-spacing: 2px; }
+}
+.interface-dialog img { border-radius: 0; }
+.is-english {
+  .mist-title h1 { font-size: clamp(68px, 7.6vw, 120px); letter-spacing: -5px; line-height: 1.15; }
+  .mist-title h1 > span:last-child { margin-left: 7%; }
+  .mist-title > p { font-size: 20px; margin-left: 7%; letter-spacing: 0; }
+  .mirror-side-note { font-size: 18px; letter-spacing: 0; }
+  .mirror-invitation > p { font-size: 13px; letter-spacing: 0; }
+  .mirror-scroll { font-size: 8px; letter-spacing: .3px; }
+  .mirror-instruction > p { letter-spacing: 0; }
+  .handoff-copy h2 { font-size: 43px; line-height: 1.15; letter-spacing: -2px; }
+}
+@media (max-width: 1150px) {
+  .mirror-edition { left: 4%; right: 4%; top: 123px; }
+  .mist-title { left: 6%; top: 25%; h1 { font-size: 113px; } > p { font-size: 20px; } }
+  .mirror-invitation, .mirror-scroll { left: 6%; }
+  .mirror-side-note { right: 4%; max-width: 140px; font-size: 16px; }
+  .mirror-toolbar { right: 4%; gap: 16px; }
+  .mirror-instruction > p { font-size: 8px; }
+  .scroll-line { width: 50px; }
+  .is-english .mist-title h1 { font-size: 81px; }
+  .is-english .handoff-copy h2 { font-size: 35px; }
+}
+@media (max-width: 850px) {
+  .mirror-edition { top: 111px; font-size: 7px; letter-spacing: 1px; }
+  .mirror-edition > span:last-child { display: none; }
+  .mist-title { top: 25%; left: 6%; h1 { font-size: 100px; letter-spacing: -4px; } }
+  .mirror-side-note { right: 6%; top: 47%; max-width: 120px; font-size: 15px; }
+  .mirror-invitation { bottom: 18%; }
+  .mirror-invitation > p { font-size: 11px; }
+  .mirror-toolbar { bottom: 30px; right: 4%; flex-direction: column; align-items: flex-end; gap: 14px; }
+  .mirror-instruction > span { font-size: 6px; margin-bottom: 6px; }
+  .mirror-instruction > p { font-size: 7px; }
+  .mirror-toolbar .mirror-tools { gap: 6px; button { width: 39px; height: 39px; } }
+  .mirror-scroll { bottom: 32px; font-size: 7px; gap: 11px; }
+  .scroll-line { width: 35px; }
+  .is-english .mist-title h1 { font-size: 70px; letter-spacing: -3px; }
+  .is-english .mist-title > p { font-size: 17px; }
+  .is-english .mirror-scroll { max-width: 240px; line-height: 1.9; font-size: 7px; }
+}
+@media (max-width: 600px) {
+  .immersive-stage { height: 100svh; min-height: 710px; }
+  .mirror-edition { left: 22px; right: 22px; top: 106px; font-size: 6px; letter-spacing: 1.3px; }
+  .mist-title { left: 22px; right: 22px; max-width: none; top: 24%;
+    > .micro-label { font-size: 7px; letter-spacing: 1.4px; }
+    h1 { font-size: clamp(76px, 21vw, 112px); letter-spacing: -4px; line-height: 1.25; margin-top: 16px; }
+    h1 > span:last-child { margin-left: 8%; }
+    > p { font-size: 17px; margin: 20px 0 0 10%; letter-spacing: 1px; }
+  }
+  .mirror-side-note { display: none; }
+  .mirror-invitation { left: 25px; right: 25px; bottom: 184px; > p { font-size: 10px; line-height: 1.8; letter-spacing: .5px; } }
+  .immersive-actions { gap: 21px; margin-top: 17px; > button { font-size: 9px; gap: 9px; } }
+  .mist-store { font-size: 11px; padding: 13px 16px; gap: 10px; > svg:first-child { width: 21px; } > svg:last-child { margin-left: 13px; width: 15px; } }
+  .mirror-scroll { bottom: 18px; left: 25px; right: 25px; gap: 16px; font-size: 8px; line-height: 1.8; }
+  .scroll-line { flex: 1; max-width: 90px; min-width: 10px; }
+  .mirror-toolbar { left: 24px; right: 24px; bottom: 87px; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+  .mirror-instruction { text-align: left; max-width: 45%; > span { font-size: 6px; letter-spacing: .6px; margin-bottom: 7px; } > p { font-size: 7px; line-height: 1.9; letter-spacing: .3px; } }
+  .mirror-toolbar .mirror-tools { gap: 5px; button { width: 36px; height: 39px; } }
+  .glass-cursor { display: none; }
+  .postcard-arrow-line { left: auto; right: 5px; bottom: -57px; width: 75px; height: 75px; }
+  .is-english {
+    .mist-title h1 { font-size: clamp(44px, 12.5vw, 73px); letter-spacing: -2.7px; line-height: 1.2; }
+    .mist-title h1 > span:last-child { margin-left: 0; }
+    .mist-title > p { font-size: 14px; margin-left: 6%; letter-spacing: 0; }
+    .mirror-invitation > p { font-size: 11px; }
+    .mirror-scroll { max-width: none; font-size: 7px; line-height: 1.8; letter-spacing: 0; }
+    .mirror-instruction { max-width: 43%; > p { font-size: 7px; } > span { font-size: 5px; letter-spacing: .5px; } }
+  }
+}
+@media (max-width: 370px) {
+  .mirror-toolbar { left: 18px; right: 18px; gap: 8px; }
+  .mirror-toolbar .mirror-tools { gap: 3px; button { width: 33px; height: 37px; } }
+  .mirror-instruction { max-width: 43%; }
+  .immersive-actions { gap: 14px; }
+  .mist-store { padding-inline: 12px; > svg:last-child { margin-left: 5px; } }
+  .mirror-invitation { left: 22px; right: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mist-title-line { will-change: auto; }
+  .glass-cursor { display: none; }
+}
