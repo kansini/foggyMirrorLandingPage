@@ -15,6 +15,7 @@ gsap.registerPlugin(ScrollTrigger, ScrollToPlugin)
 // Keep the pinned scene steady while mobile browser chrome retracts.
 ScrollTrigger.config({ ignoreMobileResize: true })
 const appStoreUrl = 'https://apps.apple.com/us/app/%E9%9B%BE%E9%95%9C/id6821307625'
+const contactEmail = 'flood_flink@163.com'
 const { locale, theme, copy: c, setLocale, toggleTheme } = usePreferences()
 const root = ref<HTMLElement>()
 const heroStage = ref<HTMLElement>()
@@ -30,7 +31,7 @@ const activeMood = ref('morning')
 const privacyDialog = ref<HTMLDialogElement>()
 const interfaceDialog = ref<HTMLDialogElement>()
 const selectedMood = computed(() => c.value.moods.find(mood => mood.id === activeMood.value) || c.value.moods[0]!)
-const navTargets = ['#play', '#story', '#weather']
+const navTargets = ['#play', '#story', '#weather', '#contact']
 const otherApps = [
   { name: 'Art Detective', url: 'https://art-detective.netlify.app' },
   { name: 'Silver Salt', url: 'https://silver-salt.netlify.app' },
@@ -293,6 +294,22 @@ onBeforeUnmount(() => {
             </a>
           </div>
           <span class="ending-scribble handwritten" aria-hidden="true">{{ c.ending.note }}</span>
+        </div>
+      </section>
+      <section id="contact" class="contact-section page-width" aria-labelledby="contact-title">
+        <div class="contact-panel">
+          <div class="contact-heading">
+            <span class="micro-label">{{ c.contact }}</span>
+            <h2 id="contact-title">{{ c.contactSection.title }}</h2>
+            <p>{{ c.contactSection.description }}</p>
+          </div>
+          <address class="contact-method">
+            <a class="contact-email" :href="'mailto:' + contactEmail" :aria-label="c.contact + ': ' + contactEmail">
+              <AppIcon name="mail" :size="23" />
+              <span class="contact-label">{{ c.contactSection.email }}</span>
+              <span class="contact-address">{{ contactEmail }}</span>
+            </a>
+          </address>
         </div>
       </section>
     </main>

@@ -48,6 +48,8 @@ interface PageContent {
   faq: { label: string; title: string; items: { question: string; answer: string }[] }
   ending: { label: string; title: string[]; description: string; platform: string; note: string }
   footer: string
+  contact: string
+  contactSection: { title: string; description: string; email: string }
   moreApps: { title: string; newTab: string }
   preview: { label: string; title: string; alt: string; caption: string }
   immersion: { label: string; hint: string; scroll: string; handoff: string[]; handoffNote: string }
@@ -59,7 +61,7 @@ export const content: Record<Locale, PageContent> = {
     title: '雾镜 · 呼——雾里见。',
     description: '哈一口气，画一点心情。雾镜把起雾玻璃上的小快乐，装进你的 iPhone。',
     brand: '雾镜', home: '雾镜首页', skip: '跳至主要内容', navigation: '主导航', menu: '展开导航', close: '关闭', language: '选择语言', light: '切换为浅色模式', dark: '切换为深色模式',
-    nav: ['体验', '功能', '风格'], download: '下载雾镜', store: '在 App Store 下载',
+    nav: ['体验', '功能', '风格', '联系我们'], download: '下载雾镜', store: '在 App Store 下载',
     hero: { label: '一款没那么正经的镜子 App', lineOne: '呼 —', lineTwo: '雾里见。', aside: '把世界调模糊一点。', description: '没什么大不了。\n只是哈一口气，画一点心情，\n把普通的一天，变得有点可爱。', preview: '先偷看一眼 App', note: '为 iPhone 而生 / 为小快乐而来', scroll: '往下，还有一点浪漫', invitation: '擦一下，有惊喜。' },
     mirror: { name: '铺满首屏的互动雾镜', imageAlt: '玻璃后的清晰橘猫照片，擦去凝露后显露原始画面', reset: '哈一口气，重新起雾', heart: '在雾里画一颗心', hint: '按住鼠标擦雾 · 手机点画笔开始', fallback: '下载 App，体验指尖绘画', handwriting: '今天，随心一点。', demo: '网页雾镜 · 示例照片', draw: '开启触屏绘画', stopDrawing: '结束绘画，恢复滚动', clear: '擦净整面镜子' },
     immersion: { label: '这整个屏幕，都是你的镜子。', hint: '试着擦一下。什么都不画，也很好。', scroll: '往下，把这面雾装进口袋', handoff: ['一整面的雾，', '装进口袋。'], handoffNote: '从此，随时随地都有一点小快乐。' },
@@ -101,6 +103,8 @@ export const content: Record<Locale, PageContent> = {
     ] },
     ending: { label: 'YOUR TURN TO MAKE A LITTLE MESS', title: ['下一笔，', '轮到你。'], description: '世界已经够清晰了。\n来，给生活一点朦胧的余地。', platform: '适用于 iPhone · 设备要求以 App Store 为准', note: '随手一画，也算浪漫。' },
     footer: '留一点雾，给生活留一点余地。',
+    contact: '联系我们',
+    contactSection: { title: '有话，写给我们。', description: '使用反馈、功能建议，或一句简单的问候，都欢迎写信给我们。', email: '电子邮件' },
     moreApps: { title: '更多 App', newTab: '在新标签页打开' },
     preview: { label: 'A PEEK INSIDE', title: '拿在手里的小浪漫。', alt: '雾镜真实界面：起雾的实时镜面、绘画工具、照片背景与雾迹拍摄', caption: 'App 实际界面 · 效果随镜头与风格变化' },
   },
@@ -108,7 +112,7 @@ export const content: Record<Locale, PageContent> = {
     title: 'Foggy Mirror · A little mist. A little magic.',
     description: 'Breathe a little. Draw a feeling. Foggy Mirror brings the simple joy of drawing on misty glass to your iPhone.',
     brand: 'Foggy Mirror', home: 'Foggy Mirror home', skip: 'Skip to content', navigation: 'Main navigation', menu: 'Open navigation', close: 'Close', language: 'Choose language', light: 'Switch to light mode', dark: 'Switch to dark mode',
-    nav: ['Try it', 'Features', 'Styles'], download: 'Get the app', store: 'Download on the App Store',
+    nav: ['Try it', 'Features', 'Styles', 'Contact'], download: 'Get the app', store: 'Download on the App Store',
     hero: { label: 'A mirror with a playful side', lineOne: 'A little mist.', lineTwo: 'A little magic.', aside: 'Let the world go a little blurry.', description: 'No big plans.\nJust a breath, a doodle,\nand an ordinary day made a little sweeter.', preview: 'Take a peek inside', note: 'Made for iPhone / Made for little joys', scroll: 'A little more wonder below', invitation: 'Wipe here. Find a surprise.' },
     mirror: { name: 'Full-screen interactive mist mirror', imageAlt: 'A sharp photo of an orange cat behind glass. Wipe the condensation to reveal the original scene.', reset: 'Breathe and mist over again', heart: 'Draw a heart in the mist', hint: 'Drag to wipe · On mobile, tap the pen first', fallback: 'Get the app to draw on mist', handwriting: 'A little more you.', demo: 'Web mirror · Sample photo', draw: 'Enable touch drawing', stopDrawing: 'Finish drawing and resume scrolling', clear: 'Wipe the whole mirror clean' },
     immersion: { label: 'This whole screen is your mirror.', hint: 'Wipe a little. Or do nothing at all.', scroll: 'Scroll to put this feeling in your pocket', handoff: ['A world of mist.', 'In your pocket.'], handoffNote: 'A little joy, wherever you happen to be.' },
@@ -150,6 +154,8 @@ export const content: Record<Locale, PageContent> = {
     ] },
     ending: { label: 'YOUR TURN TO MAKE A LITTLE MESS', title: ['Your turn.', 'Make a little mist.'], description: 'The world is sharp enough.\nLeave a little room for wonder.', platform: 'For iPhone · See App Store for device requirements', note: 'A little doodle counts as romance.' },
     footer: 'A little mist. A little room to just be.',
+    contact: 'Contact us',
+    contactSection: { title: 'A little note goes a long way.', description: 'Feedback, a feature idea, or just a hello. We’d love to hear from you.', email: 'Email' },
     moreApps: { title: 'More apps', newTab: 'Opens in a new tab' },
     preview: { label: 'A PEEK INSIDE', title: 'A little wonder, in your hand.', alt: 'The real Foggy Mirror app: live misty mirror, drawing tools, photo backgrounds and capture controls', caption: 'Actual app interface · Appearance varies with camera and style' },
   },

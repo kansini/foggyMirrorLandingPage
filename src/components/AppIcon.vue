@@ -2,6 +2,7 @@
 defineProps<{ name: string; size?: number }>()
 const paths: Record<string, string> = {
   arrow: 'M7 17 17 7M7 7h10v10',
+  mail: 'M5 4h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3ZM3 6l7.2 5.4a3 3 0 0 0 3.6 0L21 6',
   right: 'M4 12h16m-6-6 6 6-6 6',
   down: 'M12 4v16m-6-6 6 6 6-6',
   wind: 'M3 8h12a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h5a3 3 0 1 1-3 3',
